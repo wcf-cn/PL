@@ -15,3 +15,22 @@ class Member(models.Model):
 
     def __str__(self):
         return self.name
+
+class Sprint(models.Model):
+    name = models.CharField('迭代', max_length=64)
+    start_date = models.DateField('开始日')
+    end_date = models.DateField('结束日')
+    is_active = models.BooleanField('当前迭代', default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = '迭代'
+        verbose_name_plural = '迭代'
+        ordering = ['-start_date']
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def weeks(self):
+        return (self.end_date - self.start_date).days / 7
