@@ -325,11 +325,11 @@ function Column({ status, items, onDrop, onEdit }:{ status:Status; items:Require
       onDragLeave={()=>setOver(false)}
       onDrop={(e:any)=>{setOver(false); const id=Number((e as any).dataTransfer.getData('id')); if (id) onDrop(status, id)}}
       className={cn(
-        "w-64 shrink-0 p-4 rounded-lg bg-muted/50 min-h-[400px]",
+        "w-64 shrink-0 p-4 rounded-lg bg-muted/50 min-h-[400px] border",
         over && 'ring-2 ring-primary'
       )}
     >
-      <div className="flex justify-between items-center mb-3">
+      <div className="flex justify-between items-center mb-3 pb-2 border-b">
         <h3 className="font-semibold">{STATUS_LABEL[status]}</h3>
         <Badge variant="secondary">{items.length}</Badge>
       </div>

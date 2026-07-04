@@ -55,7 +55,7 @@ function Nav({authed, onLogout}:{authed:boolean; onLogout:()=>void}) {
   ]
 
   return (
-    <nav className="flex items-center justify-between mb-6">
+    <nav className="flex items-center justify-between mb-6 border-b pb-4">
       <div className="flex items-center gap-6">
         <h1 className="text-xl font-bold">PL 看板</h1>
         <Tabs value={path.replace('#/', '') || 'board'}>
