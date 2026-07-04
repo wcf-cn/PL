@@ -27,6 +27,7 @@ export default function Board() {
   const [mdate, setMDate] = useState('')
   const [mnote, setMNote] = useState('')
   const [error, setError] = useState('')
+  const [showDone, setShowDone] = useState(false)
   const load = () => api.requirements.list().then(setItems)
   useEffect(() => {
     load()
@@ -140,7 +141,12 @@ export default function Board() {
 
   return (
     <div className="space-y-4">
-      <Button onClick={() => setShowForm(!showForm)}>+ 新建需求</Button>
+      <div className="flex items-center gap-2">
+        <Button onClick={() => setShowForm(!showForm)}>+ 新建需求</Button>
+        <Button variant="outline" onClick={() => setShowDone(!showDone)}>
+          {showDone ? '隐藏已上线' : '显示已上线'}
+        </Button>
+      </div>
 
       {showForm && (
         <Card>
@@ -309,7 +315,7 @@ export default function Board() {
       )}
 
       <div className="flex gap-3 overflow-x-auto pb-4">
-        {STATUS_ORDER.map(st => (
+        {STATUS_ORDER.filter(st => showDone || st !== 'done').map(st => (
           <Column key={st} status={st} items={items.filter(r => r.status === st)} onDrop={onDrop} onEdit={startEdit} />
         ))}
       </div>
