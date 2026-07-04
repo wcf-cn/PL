@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { api } from '../api'
-import type { Sprint, Requirement, Status } from '../types'
+import type { BurndownData, Sprint } from '../types'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
-
-const DONE_STATUSES: Status[] = ['done', 'paused']
 
 export default function Burndown() {
   const [sprints, setSprints] = useState<Sprint[]>([])
   const [sid, setSid] = useState<number | ''>('')
-  const [reqs, setReqs] = useState<Requirement[]>([])
+  const [burndownData, setBurndownData] = useState<BurndownData | null>(null)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     api.sprints.list().then(s => {
@@ -21,30 +20,44 @@ export default function Burndown() {
   }, [])
 
   useEffect(() => {
-    if (sid) api.requirements.list({ assigned_sprint: String(sid) }).then(setReqs)
+    if (sid) {
+      setLoading(true)
+      api.burndown(Number(sid)).then(data => {
+        setBurndownData(data)
+        setLoading(false)
+      }).catch(() => setLoading(false))
+    }
   }, [sid])
 
-  const sprint = sprints.find(s => s.id === sid)
-  if (!sprint) return <div>加载中…</div>
+  if (loading || !burndownData) return <div>加载中…</div>
 
-  const total = reqs.reduce((sum, r) => sum + (r.est_effort || 0), 0)
-  const remaining = reqs.filter(r => !DONE_STATUSES.includes(r.status)).reduce((sum, r) => sum + (r.est_effort || 0), 0)
+  const { sprint, total_effort, snapshots } = burndownData
 
-  // Parse dates consistently as local midnight
-  const parseDate = (d: string) => { const x = new Date(d); x.setHours(0,0,0,0); return x }
-  const start = parseDate(sprint.start_date)
-  const end = parseDate(sprint.end_date)
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  // Generate ideal line data points (start with total, end with 0)
+  const startDate = new Date(sprint.start_date)
+  const endDate = new Date(sprint.end_date)
+  const dayCount = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
 
-  const idealData = [
-    { date: sprint.start_date, 理想线: total },
-    { date: sprint.end_date, 理想线: 0 }
-  ]
+  const idealLine = Array.from({ length: dayCount + 1 }, (_, i) => {
+    const date = new Date(startDate)
+    date.setDate(date.getDate() + i)
+    const progress = i / dayCount
+    return {
+      date: date.toISOString().split('T')[0],
+      理想线: total_effort * (1 - progress)
+    }
+  })
 
-  const actualData = today >= start && today <= end
-    ? [{ date: today.toISOString().split('T')[0], 实际: remaining }]
-    : []
+  // Convert snapshots to actual line data
+  const actualLine = snapshots.map(s => ({
+    date: s.date,
+    实际线: s.remaining_effort
+  }))
+
+  // Merge and sort by date
+  const allData = [...idealLine, ...actualLine].sort((a, b) =>
+    new Date(a.date).getTime() - new Date(b.date).getTime()
+  )
 
   return (
     <Card>
@@ -64,20 +77,38 @@ export default function Burndown() {
       <CardContent>
         <div className="mb-4">
           <p className="text-sm text-muted-foreground">
-            总工时 {total}h / 剩余 {remaining}h
+            总工时 {total_effort}h
           </p>
         </div>
-        <div className="flex justify-center">
-          <LineChart width={600} height={300} data={[...idealData, ...actualData]}>
+        <ResponsiveContainer width="100%" height={400}>
+          <LineChart data={allData}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
-            <YAxis />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 12 }}
+            />
+            <YAxis
+              tick={{ fontSize: 12 }}
+              label={{ value: '剩余工时 (h)', angle: -90, position: 'insideLeft' }}
+            />
             <Tooltip />
             <Legend />
-            <Line type="linear" dataKey="理想线" stroke="#8884d8" strokeDasharray="5 5" />
-            <Line type="monotone" dataKey="实际" stroke="#82ca9d" strokeWidth={2} />
+            <Line
+              type="linear"
+              dataKey="理想线"
+              stroke="#8884d8"
+              strokeDasharray="5 5"
+              dot={false}
+            />
+            <Line
+              type="monotone"
+              dataKey="实际线"
+              stroke="#82ca9d"
+              strokeWidth={2}
+              dot={{ r: 4 }}
+            />
           </LineChart>
-        </div>
+        </ResponsiveContainer>
       </CardContent>
     </Card>
   )

@@ -57,6 +57,18 @@ export default function Gantt() {
     return d
   })
 
+  // Group requirements by assignee
+  const groupedByAssignee = validReqs.reduce((acc, req) => {
+    const assigneeName = req.assignee_name || '未分配'
+    if (!acc[assigneeName]) {
+      acc[assigneeName] = []
+    }
+    acc[assigneeName].push(req)
+    return acc
+  }, {} as Record<string, Requirement[]>)
+
+  const assigneeNames = Object.keys(groupedByAssignee)
+
   return (
     <Card>
       <CardHeader>
@@ -81,22 +93,29 @@ export default function Gantt() {
               </div>
             ))}
           </div>
-          {validReqs.map(r => (
-            <div key={r.id} className="relative h-8 border-b">
-              <div
-                className={cn(
-                  "absolute h-6 rounded px-2 text-xs flex items-center truncate",
-                  STATUS_COLORS[r.status]
-                )}
-                style={{
-                  left: `${position(r.planned_start!)}%`,
-                  width: `${width(r.planned_start!, r.planned_end!)}%`,
-                  top: '4px'
-                }}
-                title={r.title}
-              >
-                {r.title}
+          {assigneeNames.map(assigneeName => (
+            <div key={assigneeName}>
+              <div className="bg-muted/50 px-2 py-1 text-sm font-medium border-b">
+                {assigneeName}
               </div>
+              {groupedByAssignee[assigneeName].map(r => (
+                <div key={r.id} className="relative h-8 border-b">
+                  <div
+                    className={cn(
+                      "absolute h-6 rounded px-2 text-xs flex items-center truncate",
+                      STATUS_COLORS[r.status]
+                    )}
+                    style={{
+                      left: `${position(r.planned_start!)}%`,
+                      width: `${width(r.planned_start!, r.planned_end!)}%`,
+                      top: '4px'
+                    }}
+                    title={r.title}
+                  >
+                    {r.title}
+                  </div>
+                </div>
+              ))}
             </div>
           ))}
         </div>

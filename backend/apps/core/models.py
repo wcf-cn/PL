@@ -77,6 +77,21 @@ class Requirement(models.Model):
     def __str__(self):
         return self.title
 
+class BurndownSnapshot(models.Model):
+    sprint = models.ForeignKey(Sprint, on_delete=models.CASCADE, verbose_name='迭代')
+    date = models.DateField('日期')
+    remaining_effort = models.FloatField('剩余工时(h)', default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = '燃尽图快照'
+        verbose_name_plural = '燃尽图快照'
+        unique_together = ('sprint', 'date')
+        ordering = ['date']
+
+    def __str__(self):
+        return f'{self.sprint.name} - {self.date}'
+
 class Milestone(models.Model):
     requirement = models.ForeignKey(Requirement, on_delete=models.CASCADE, verbose_name='需求')
     title = models.CharField('标题', max_length=200)

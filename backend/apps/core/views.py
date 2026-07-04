@@ -4,7 +4,9 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from django.contrib.auth import authenticate, login as django_login, logout as django_logout
 from django.shortcuts import get_object_or_404
-from .models import Member, Sprint, Requirement, Milestone
+from django.utils import timezone
+from django.db import models
+from .models import Member, Sprint, Requirement, Milestone, BurndownSnapshot
 from .serializers import MemberSerializer, SprintSerializer, RequirementSerializer, MilestoneSerializer
 from . import capacity
 
@@ -74,3 +76,51 @@ def me_view(request):
     if not request.user.is_authenticated:
         return Response({'detail': '未登录'}, status=status.HTTP_401_UNAUTHORIZED)
     return Response({'username': request.user.username})
+
+@api_view(['GET'])
+def burndown_view(request):
+    sprint_id = request.query_params.get('sprint')
+    if not sprint_id:
+        return Response({'detail': 'sprint 参数必填'}, status=status.HTTP_400_BAD_REQUEST)
+    sprint = get_object_or_404(Sprint, pk=sprint_id)
+
+    # Calculate current remaining effort (exclude done/paused requirements)
+    current_remaining = Requirement.objects.filter(
+        assigned_sprint=sprint,
+        status__in=['backlog', 'scheduled', 'in_progress', 'testing', 'blocked']
+    ).aggregate(total=models.Sum('est_effort'))['total'] or 0
+
+    # Create or update today's snapshot
+    today = timezone.now().date()
+    BurndownSnapshot.objects.get_or_create(
+        sprint=sprint,
+        date=today,
+        defaults={'remaining_effort': current_remaining}
+    )
+
+    # Calculate total effort for the sprint
+    total_effort = Requirement.objects.filter(
+        assigned_sprint=sprint
+    ).aggregate(total=models.Sum('est_effort'))['total'] or 0
+
+    # Get all snapshots ordered by date
+    snapshots = BurndownSnapshot.objects.filter(
+        sprint=sprint
+    ).order_by('date')
+
+    return Response({
+        'sprint': {
+            'id': sprint.id,
+            'name': sprint.name,
+            'start_date': sprint.start_date.isoformat(),
+            'end_date': sprint.end_date.isoformat()
+        },
+        'total_effort': total_effort,
+        'snapshots': [
+            {
+                'date': snapshot.date.isoformat(),
+                'remaining_effort': snapshot.remaining_effort
+            }
+            for snapshot in snapshots
+        ]
+    })

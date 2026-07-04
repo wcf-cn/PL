@@ -53,6 +53,24 @@ export interface Milestone {
   created_at:string;
 }
 
+export interface BurndownSnapshot {
+  date:string;
+  remaining_effort:number;
+}
+
+export interface BurndownSprint {
+  id:number;
+  name:string;
+  start_date:string;
+  end_date:string;
+}
+
+export interface BurndownData {
+  sprint:BurndownSprint;
+  total_effort:number;
+  snapshots:BurndownSnapshot[];
+}
+
 export const STATUS_LABEL: Record<Status,string> = {
   backlog:'待评审',
   scheduled:'排期中',
