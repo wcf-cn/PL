@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { api } from '../api'
 import { STATUS_LABEL, type Sprint, type Requirement, type Status } from '../types'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
@@ -20,6 +20,8 @@ export default function Gantt() {
   const [sprints, setSprints] = useState<Sprint[]>([])
   const [sid, setSid] = useState<number | ''>('')
   const [reqs, setReqs] = useState<Requirement[]>([])
+  const [dragging, setDragging] = useState<{id: number, origStart: string, origEnd: string, newStart: string, newEnd: string} | null>(null)
+  const timelineRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     api.sprints.list().then(s => {
@@ -52,6 +54,14 @@ export default function Gantt() {
 
   const formatDate = (date: Date) => date.toISOString().split('T')[0]
 
+  // Date helper: add N days to YYYY-MM-DD string, returning new YYYY-MM-DD at local midnight
+  const addDays = (dateStr: string, days: number): string => {
+    const d = new Date(dateStr)
+    d.setHours(0, 0, 0, 0) // normalize to midnight local to avoid TZ off-by-one
+    d.setDate(d.getDate() + days)
+    return d.toISOString().split('T')[0]
+  }
+
   const dateAxis = Array.from({ length: totalDays + 1 }, (_, i) => {
     const d = new Date(minDate)
     d.setDate(d.getDate() + i)
@@ -69,6 +79,54 @@ export default function Gantt() {
   }, {} as Record<string, Requirement[]>)
 
   const assigneeNames = Object.keys(groupedByAssignee)
+
+  // Drag handlers
+  const handleMouseDown = (e: React.MouseEvent, req: Requirement) => {
+    const timeline = timelineRef.current
+    if (!timeline) return
+    const containerWidth = timeline.getBoundingClientRect().width
+    const startClientX = e.clientX
+
+    const origStart = req.planned_start!
+    const origEnd = req.planned_end!
+
+    e.preventDefault() // prevent text selection
+
+    setDragging({
+      id: req.id,
+      origStart,
+      origEnd,
+      newStart: origStart,
+      newEnd: origEnd
+    })
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!dragging) return
+      const deltaX = e.clientX - startClientX
+      const deltaDays = Math.round(deltaX / containerWidth * totalDays)
+      const newStart = addDays(origStart, deltaDays)
+      const newEnd = addDays(origEnd, deltaDays)
+      setDragging(prev => prev ? { ...prev, newStart, newEnd } : null)
+    }
+
+    const handleMouseUp = async () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+      if (!dragging) return
+
+      const { id, newStart, newEnd } = dragging
+      try {
+        await api.requirements.update(id, { planned_start: newStart, planned_end: newEnd })
+        setReqs(prev => prev.map(r => r.id === id ? { ...r, planned_start: newStart, planned_end: newEnd } : r))
+      } catch (err) {
+        console.error('Failed to update requirement:', err)
+      }
+      setDragging(null)
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+  }
 
   return (
     <Card className="p-6 space-y-4">
@@ -97,7 +155,7 @@ export default function Gantt() {
           ))}
         </div>
 
-        <div className="relative border-l border-r border-b rounded-lg overflow-x-auto bg-muted/30">
+        <div ref={timelineRef} className="relative border-l border-r border-b rounded-lg overflow-x-auto bg-muted/30">
           <div className="flex border-b text-xs">
             {dateAxis.map(d => (
               <div key={d.toISOString()} className="flex-shrink-0 p-1 text-muted-foreground" style={{ width: `${100 / (totalDays + 1)}%` }}>
@@ -111,24 +169,30 @@ export default function Gantt() {
                 {assigneeName}
                 <Badge variant="secondary" className="text-xs">{groupedByAssignee[assigneeName].length}</Badge>
               </div>
-              {groupedByAssignee[assigneeName].map(r => (
+              {groupedByAssignee[assigneeName].map(r => {
+                const isDragging = dragging?.id === r.id
+                const displayStart = isDragging ? dragging.newStart : r.planned_start!
+                    const displayEnd = isDragging ? dragging.newEnd : r.planned_end!
+                    return (
                 <div key={r.id} className="relative h-8 border-b">
                   <div
                     className={cn(
                       "absolute h-6 rounded px-2 text-xs flex items-center truncate",
-                      STATUS_COLORS[r.status]
+                      STATUS_COLORS[r.status],
+                      isDragging ? "cursor-grabbing" : "cursor-grab"
                     )}
                     style={{
-                      left: `${position(r.planned_start!)}%`,
-                      width: `${width(r.planned_start!, r.planned_end!)}%`,
+                      left: `${position(displayStart)}%`,
+                      width: `${width(displayStart, displayEnd)}%`,
                       top: '4px'
                     }}
                     title={`${r.title} (${STATUS_LABEL[r.status]})`}
+                    onMouseDown={(e) => handleMouseDown(e, r)}
                   >
                     {r.title}
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           ))}
         </div>
