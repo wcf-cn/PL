@@ -19,6 +19,11 @@ const STATUS_COLORS: Record<Status, string> = {
 // Fixed day width for consistent timeline rendering
 const DAY_W = 44
 
+// Collapse constants
+const HEAD = 7
+const TAIL = 7
+const COLLAPSE_W = 120
+
 export default function Gantt() {
   const [sprints, setSprints] = useState<Sprint[]>([])
   const [sid, setSid] = useState<number | ''>('')
@@ -58,6 +63,64 @@ export default function Gantt() {
     const startDays = position(start)
     const endDays = position(end)
     return (endDays - startDays) * DAY_W
+  }
+
+  // Display coordinate functions for collapsed mode
+  const isCollapsed = !axisExpanded && totalDays > 21
+
+  const displayLeft = (startStr: string) => {
+    const startDay = position(startStr)
+    if (!isCollapsed) return startDay * DAY_W
+
+    // In collapsed mode
+    if (startDay <= HEAD) {
+      // In head region: normal positioning
+      return startDay * DAY_W
+    } else if (startDay >= totalDays - TAIL) {
+      // In tail region: offset by head + collapse
+      return HEAD * DAY_W + COLLAPSE_W + (startDay - (totalDays - TAIL)) * DAY_W
+    } else {
+      // In middle region: position at left edge of collapse column
+      return HEAD * DAY_W
+    }
+  }
+
+  const displayWidth = (startStr: string, endStr: string) => {
+    const startDay = position(startStr)
+    const endDay = position(endStr)
+    const duration = endDay - startDay
+
+    if (!isCollapsed) return duration * DAY_W
+
+    // In collapsed mode
+    const endInHead = endDay <= HEAD
+    const startInTail = startDay >= totalDays - TAIL
+    const spansMiddle = startDay < HEAD && endDay > totalDays - TAIL
+    const inMiddleOnly = startDay >= HEAD && endDay <= totalDays - TAIL
+
+    if (endInHead) {
+      // Entirely in head: normal width
+      return duration * DAY_W
+    } else if (startInTail) {
+      // Entirely in tail: normal width
+      return duration * DAY_W
+    } else if (spansMiddle) {
+      // Spans entire middle: show as thin bar in collapse column
+      return COLLAPSE_W
+    } else if (inMiddleOnly) {
+      // Fully inside middle: show as thin bar in collapse column
+      return COLLAPSE_W
+    } else {
+      // Partially spans middle: split logic handled in render
+      // Return width for head part or tail part
+      if (startDay < HEAD) {
+        // Head part: from start to collapse column
+        return (HEAD - startDay) * DAY_W
+      } else {
+        // Tail part: from collapse column to end
+        return (endDay - (totalDays - TAIL)) * DAY_W
+      }
+    }
   }
 
   const formatDate = (date: Date) => `${date.getMonth() + 1}/${date.getDate()}`
@@ -163,11 +226,13 @@ export default function Gantt() {
         </div>
 
         <div ref={timelineRef} className="relative border-l border-r border-b rounded-lg overflow-x-auto bg-muted/30">
-          <div 
+          <div
             className="border-b"
-            style={{ 
-              width: `${totalDays * DAY_W}px`,
-              backgroundImage: `repeating-linear-gradient(to right, var(--border) 0, var(--border) 1px, transparent 1px, transparent ${DAY_W}px)`
+            style={{
+              width: `${isCollapsed ? HEAD * DAY_W + COLLAPSE_W + TAIL * DAY_W : totalDays * DAY_W}px`,
+              backgroundImage: !isCollapsed
+                ? `repeating-linear-gradient(to right, var(--border) 0, var(--border) 1px, transparent 1px, transparent ${DAY_W}px)`
+                : undefined
             }}
           >
             <div className="flex border-b text-xs w-full relative">
@@ -194,10 +259,10 @@ export default function Gantt() {
               ) : (
                 <>
                   {/* Head 7 days */}
-                  {dateAxis.slice(0, 7).map(d => (
+                  {dateAxis.slice(0, HEAD).map(d => (
                     <div
                       key={d.toISOString()}
-                      className="flex-shrink-0 px-1 py-1 text-muted-foreground text-[10px] text-center"
+                      className="flex-shrink-0 px-1 py-1 text-muted-foreground text-[10px] text-center border-r"
                       style={{ width: `${DAY_W}px` }}
                     >
                       {formatDate(d)}
@@ -205,17 +270,17 @@ export default function Gantt() {
                   ))}
                   {/* Collapsible middle section */}
                   <div
-                    className="flex-shrink-0 px-1 py-1 bg-muted text-muted-foreground italic text-center text-[10px] cursor-pointer hover:bg-muted/70"
-                    style={{ width: `${(totalDays - 14) * DAY_W}px` }}
+                    className="flex-shrink-0 px-1 py-1 bg-muted/50 text-muted-foreground italic text-center text-[10px] cursor-pointer hover:bg-muted/70 border-r"
+                    style={{ width: `${COLLAPSE_W}px` }}
                     onClick={() => setAxisExpanded(true)}
                   >
-                    …{totalDays - 14} 天…
+                    …{totalDays - HEAD - TAIL} 天…
                   </div>
                   {/* Tail 7 days */}
-                  {dateAxis.slice(-7).map(d => (
+                  {dateAxis.slice(-TAIL).map(d => (
                     <div
                       key={d.toISOString()}
-                      className="flex-shrink-0 px-1 py-1 text-muted-foreground text-[10px] text-center"
+                      className="flex-shrink-0 px-1 py-1 text-muted-foreground text-[10px] text-center border-r"
                       style={{ width: `${DAY_W}px` }}
                     >
                       {formatDate(d)}
@@ -233,25 +298,94 @@ export default function Gantt() {
                 {groupedByAssignee[assigneeName].map(r => {
                   const isDragging = dragging?.id === r.id
                   const displayStart = isDragging ? dragging.newStart : r.planned_start!
-                    const displayEnd = isDragging ? dragging.newEnd : r.planned_end!
-                    return (
+                  const displayEnd = isDragging ? dragging.newEnd : r.planned_end!
+                  const startDay = position(displayStart)
+                  const endDay = position(displayEnd)
+                  const endInHead = endDay <= HEAD
+                  const startInTail = startDay >= totalDays - TAIL
+                  const spansMiddle = startDay < HEAD && endDay > totalDays - TAIL
+                  const inMiddleOnly = startDay >= HEAD && endDay <= totalDays - TAIL
+                  const partiallySpansHead = startDay < HEAD && endDay > HEAD && endDay <= totalDays - TAIL
+                  const partiallySpansTail = startDay >= HEAD && startDay < totalDays - TAIL && endDay > totalDays - TAIL
+
+                  return (
                   <div key={r.id} className="relative h-8 border-b w-full">
-                    <div
-                      className={cn(
-                        "absolute h-6 rounded px-2 text-xs flex items-center truncate",
-                        STATUS_COLORS[r.status],
-                        isDragging ? "cursor-grabbing" : "cursor-grab"
-                      )}
-                      style={{
-                        left: `${position(displayStart) * DAY_W}px`,
-                        width: `${width(displayStart, displayEnd)}px`,
-                        top: '4px'
-                      }}
-                      title={`${r.title} (${STATUS_LABEL[r.status]})`}
-                      onMouseDown={(e) => handleMouseDown(e, r)}
-                    >
-                      {r.title}
-                    </div>
+                    {/* Render bar segments based on collapse state */}
+                    {isCollapsed ? (
+                      <>
+                        {/* Head segment */}
+                        {(endInHead || partiallySpansHead || spansMiddle) && (
+                          <div
+                            className={cn(
+                              "absolute h-6 rounded-l px-2 text-xs flex items-center truncate",
+                              STATUS_COLORS[r.status],
+                              "cursor-default"
+                            )}
+                            style={{
+                              left: `${displayLeft(displayStart)}px`,
+                              width: `${(endInHead || partiallySpansHead) ? displayWidth(displayStart, displayEnd) : HEAD * DAY_W - displayLeft(displayStart)}px`,
+                              top: '4px'
+                            }}
+                            title={`${r.title} (${STATUS_LABEL[r.status]})`}
+                          >
+                            {r.title}
+                          </div>
+                        )}
+                        {/* Middle/collapse segment */}
+                        {(inMiddleOnly || spansMiddle) && (
+                          <div
+                            className={cn(
+                              "absolute h-6 rounded px-2 text-xs flex items-center truncate",
+                              STATUS_COLORS[r.status],
+                              "cursor-default"
+                            )}
+                            style={{
+                              left: `${HEAD * DAY_W}px`,
+                              width: `${COLLAPSE_W}px`,
+                              top: '4px'
+                            }}
+                            title={`${r.title} (${STATUS_LABEL[r.status]}) - 跨${endDay - startDay}天`}
+                          >
+                            {inMiddleOnly ? r.title : `跨${endDay - startDay}天`}
+                          </div>
+                        )}
+                        {/* Tail segment */}
+                        {(startInTail || partiallySpansTail || spansMiddle) && (
+                          <div
+                            className={cn(
+                              "absolute h-6 rounded-r px-2 text-xs flex items-center truncate",
+                              STATUS_COLORS[r.status],
+                              "cursor-default"
+                            )}
+                            style={{
+                              left: `${startInTail ? displayLeft(displayStart) : HEAD * DAY_W + COLLAPSE_W}px`,
+                              width: `${(startInTail || partiallySpansTail) ? displayWidth(displayStart, displayEnd) : displayLeft(displayEnd) - (HEAD * DAY_W + COLLAPSE_W)}px`,
+                              top: '4px'
+                            }}
+                            title={`${r.title} (${STATUS_LABEL[r.status]})`}
+                          >
+                            {spansMiddle ? '' : r.title}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div
+                        className={cn(
+                          "absolute h-6 rounded px-2 text-xs flex items-center truncate",
+                          STATUS_COLORS[r.status],
+                          isDragging ? "cursor-grabbing" : "cursor-grab"
+                        )}
+                        style={{
+                          left: `${position(displayStart) * DAY_W}px`,
+                          width: `${width(displayStart, displayEnd)}px`,
+                          top: '4px'
+                        }}
+                        title={`${r.title} (${STATUS_LABEL[r.status]})`}
+                        onMouseDown={(e) => handleMouseDown(e, r)}
+                      >
+                        {r.title}
+                      </div>
+                    )}
                   </div>
                 )})}
               </div>
