@@ -41,7 +41,7 @@ export default function Board() {
         priority: form.priority,
         assignee: form.assignee,
         module: form.module || '',
-        est_effort: form.est_effort ? Number(form.est_effort) : 0,
+        est_effort: Number(form.est_effort) || 0,
         assigned_sprint: form.assigned_sprint
       }
       const created = await api.requirements.create(payload)
@@ -50,7 +50,12 @@ export default function Board() {
       setError('')
       setForm({ title: '', status: 'backlog', priority: 'P1', assignee: null, module: '', est_effort: '', assigned_sprint: null })
     } catch (err: any) {
-      setError(err.response?.data?.message || '创建失败')
+      const d = err.response?.data
+      let msg = '创建失败'
+      if (typeof d === 'string') msg = d
+      else if (d?.detail) msg = d.detail
+      else if (d && typeof d === 'object') msg = Object.entries(d).map(([f, e]) => `${f}: ${Array.isArray(e) ? e.join(',') : e}`).join('; ')
+      setError(msg)
     }
   }
 
