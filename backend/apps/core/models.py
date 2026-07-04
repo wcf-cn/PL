@@ -76,3 +76,18 @@ class Requirement(models.Model):
 
     def __str__(self):
         return self.title
+
+class Milestone(models.Model):
+    requirement = models.ForeignKey(Requirement, on_delete=models.CASCADE, verbose_name='需求')
+    title = models.CharField('标题', max_length=200)
+    date = models.DateField('日期')
+    note = models.TextField('备注', blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = '里程碑'
+        verbose_name_plural = '里程碑'
+        ordering = ['-date']
+
+    def __str__(self):
+        return self.title

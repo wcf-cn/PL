@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Member, Sprint, Requirement
+from .models import Member, Sprint, Requirement, Milestone
 
 @admin.register(Member)
 class MemberAdmin(admin.ModelAdmin):
@@ -18,3 +18,9 @@ class RequirementAdmin(admin.ModelAdmin):
     list_filter = ('status', 'priority', 'module', 'assigned_sprint')
     search_fields = ('title', 'note')
     list_editable = ('status', 'priority', 'progress')
+
+@admin.register(Milestone)
+class MilestoneAdmin(admin.ModelAdmin):
+    list_display = ('title', 'date', 'requirement', 'note')
+    list_filter = ('requirement',)
+    search_fields = ('title',)

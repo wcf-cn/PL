@@ -4,8 +4,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from django.contrib.auth import authenticate, login as django_login, logout as django_logout
 from django.shortcuts import get_object_or_404
-from .models import Member, Sprint, Requirement
-from .serializers import MemberSerializer, SprintSerializer, RequirementSerializer
+from .models import Member, Sprint, Requirement, Milestone
+from .serializers import MemberSerializer, SprintSerializer, RequirementSerializer, MilestoneSerializer
 from . import capacity
 
 class MemberViewSet(viewsets.ModelViewSet):
@@ -25,6 +25,16 @@ class RequirementViewSet(viewsets.ModelViewSet):
             v = self.request.query_params.get(f)
             if v:
                 qs = qs.filter(**{f: v})
+        return qs
+
+class MilestoneViewSet(viewsets.ModelViewSet):
+    queryset = Milestone.objects.all()
+    serializer_class = MilestoneSerializer
+    def get_queryset(self):
+        qs = Milestone.objects.all()
+        requirement_id = self.request.query_params.get('requirement')
+        if requirement_id:
+            qs = qs.filter(requirement_id=requirement_id)
         return qs
 
 @api_view(['GET'])

@@ -1,11 +1,12 @@
 from rest_framework.routers import DefaultRouter
 from django.urls import path
-from .views import MemberViewSet, SprintViewSet, RequirementViewSet, capacity_view, login_view, logout_view, me_view
+from .views import MemberViewSet, SprintViewSet, RequirementViewSet, MilestoneViewSet, capacity_view, login_view, logout_view, me_view
 
 router = DefaultRouter()
 router.register('members', MemberViewSet)
 router.register('sprints', SprintViewSet)
 router.register('requirements', RequirementViewSet)
+router.register('milestones', MilestoneViewSet)
 
 urlpatterns = router.urls + [path('capacity/', capacity_view)]
 urlpatterns += [

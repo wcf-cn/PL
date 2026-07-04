@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Member, Sprint, Requirement
+from .models import Member, Sprint, Requirement, Milestone
 
 class MemberSerializer(serializers.ModelSerializer):
     class Meta:
@@ -17,4 +17,9 @@ class RequirementSerializer(serializers.ModelSerializer):
     sprint_name = serializers.CharField(source='assigned_sprint.name', read_only=True, default='')
     class Meta:
         model = Requirement
+        fields = '__all__'
+
+class MilestoneSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Milestone
         fields = '__all__'
