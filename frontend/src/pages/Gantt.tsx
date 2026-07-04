@@ -67,8 +67,8 @@ export default function Gantt() {
             </div>
           ))}
         </div>
-        {validReqs.map((r, i) => (
-          <div key={r.id} className="relative h-8 border-b border-gray-200" style={{ top: `${i * 32}px` }}>
+        {validReqs.map(r => (
+          <div key={r.id} className="relative h-8 border-b border-gray-200">
             <div
               className={`absolute h-6 ${STATUS_COLORS[r.status]} text-xs truncate px-1`}
               style={{

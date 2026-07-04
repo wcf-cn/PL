@@ -265,7 +265,7 @@ function Column({ status, items, onDrop, onEdit }:{ status:Status; items:Require
               <span className={`px-1 rounded ${PRIO_COLOR[r.priority]}`}>{r.priority}</span>
               <span>{r.assignee_name||'未分配'}</span>
               <span>预计 {r.est_effort}h{r.actual_effort > 0 ? ` / 已投 ${r.actual_effort}h` : ''}</span>
-              <span>{r.progress}%</span>
+              <span>{calcProgress(r.est_effort, r.actual_effort)}%</span>
               {(r.planned_start || r.planned_end) && <span>{r.planned_start || '?'}~{r.planned_end || '?'}</span>}
             </div>
           </div>
