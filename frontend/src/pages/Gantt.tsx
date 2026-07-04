@@ -24,6 +24,7 @@ export default function Gantt() {
   const [sid, setSid] = useState<number | ''>('')
   const [reqs, setReqs] = useState<Requirement[]>([])
   const [dragging, setDragging] = useState<{id: number, origStart: string, origEnd: string, newStart: string, newEnd: string} | null>(null)
+  const [axisExpanded, setAxisExpanded] = useState(false)
   const timelineRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -169,16 +170,59 @@ export default function Gantt() {
               backgroundImage: `repeating-linear-gradient(to right, var(--border) 0, var(--border) 1px, transparent 1px, transparent ${DAY_W}px)`
             }}
           >
-            <div className="flex border-b text-xs w-full">
-              {dateAxis.map(d => (
-                <div
-                  key={d.toISOString()}
-                  className="flex-shrink-0 px-1 py-1 text-muted-foreground text-[10px] text-center"
-                  style={{ width: `${DAY_W}px` }}
-                >
-                  {formatDate(d)}
-                </div>
-              ))}
+            <div className="flex border-b text-xs w-full relative">
+              {totalDays <= 21 || axisExpanded ? (
+                <>
+                  {dateAxis.map(d => (
+                    <div
+                      key={d.toISOString()}
+                      className="flex-shrink-0 px-1 py-1 text-muted-foreground text-[10px] text-center"
+                      style={{ width: `${DAY_W}px` }}
+                    >
+                      {formatDate(d)}
+                    </div>
+                  ))}
+                  {totalDays > 21 && (
+                    <button
+                      onClick={() => setAxisExpanded(false)}
+                      className="absolute right-2 top-1 text-[10px] text-muted-foreground hover:text-foreground cursor-pointer bg-background border rounded px-1"
+                    >
+                      收起
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  {/* Head 7 days */}
+                  {dateAxis.slice(0, 7).map(d => (
+                    <div
+                      key={d.toISOString()}
+                      className="flex-shrink-0 px-1 py-1 text-muted-foreground text-[10px] text-center"
+                      style={{ width: `${DAY_W}px` }}
+                    >
+                      {formatDate(d)}
+                    </div>
+                  ))}
+                  {/* Collapsible middle section */}
+                  <div
+                    className="flex-shrink-0 px-1 py-1 bg-muted text-muted-foreground italic text-center text-[10px] cursor-pointer hover:bg-muted/70"
+                    style={{ width: `${(totalDays - 14) * DAY_W}px` }}
+                    onClick={() => setAxisExpanded(true)}
+                  >
+                    …{totalDays - 14} 天…
+                  </div>
+                  {/* Tail 7 days */}
+                  {dateAxis.slice(-7).map(d => (
+                    <div
+                      key={d.toISOString()}
+                      className="flex-shrink-0 px-1 py-1 text-muted-foreground text-[10px] text-center"
+                      style={{ width: `${DAY_W}px` }}
+                    >
+                      {formatDate(d)}
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
             {assigneeNames.map(assigneeName => (
               <div key={assigneeName}>
