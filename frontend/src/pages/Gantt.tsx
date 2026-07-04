@@ -162,49 +162,57 @@ export default function Gantt() {
         </div>
 
         <div ref={timelineRef} className="relative border-l border-r border-b rounded-lg overflow-x-auto bg-muted/30">
-          <div className="flex border-b text-xs" style={{ width: `${totalDays * DAY_W}px` }}>
-            {dateAxis.map(d => (
-              <div
-                key={d.toISOString()}
-                className="flex-shrink-0 px-1 py-1 text-muted-foreground text-[10px] text-center border-r"
-                style={{ width: `${DAY_W}px` }}
-              >
-                {formatDate(d)}
+          <div 
+            className="border-b"
+            style={{ 
+              width: `${totalDays * DAY_W}px`,
+              backgroundImage: `repeating-linear-gradient(to right, var(--border) 0, var(--border) 1px, transparent 1px, transparent ${DAY_W}px)`
+            }}
+          >
+            <div className="flex border-b text-xs w-full">
+              {dateAxis.map(d => (
+                <div
+                  key={d.toISOString()}
+                  className="flex-shrink-0 px-1 py-1 text-muted-foreground text-[10px] text-center"
+                  style={{ width: `${DAY_W}px` }}
+                >
+                  {formatDate(d)}
+                </div>
+              ))}
+            </div>
+            {assigneeNames.map(assigneeName => (
+              <div key={assigneeName}>
+                <div className="bg-muted/50 px-2 py-1 text-sm font-bold border-b flex items-center gap-2">
+                  {assigneeName}
+                  <Badge variant="secondary" className="text-xs">{groupedByAssignee[assigneeName].length}</Badge>
+                </div>
+                {groupedByAssignee[assigneeName].map(r => {
+                  const isDragging = dragging?.id === r.id
+                  const displayStart = isDragging ? dragging.newStart : r.planned_start!
+                    const displayEnd = isDragging ? dragging.newEnd : r.planned_end!
+                    return (
+                  <div key={r.id} className="relative h-8 border-b w-full">
+                    <div
+                      className={cn(
+                        "absolute h-6 rounded px-2 text-xs flex items-center truncate",
+                        STATUS_COLORS[r.status],
+                        isDragging ? "cursor-grabbing" : "cursor-grab"
+                      )}
+                      style={{
+                        left: `${position(displayStart) * DAY_W}px`,
+                        width: `${width(displayStart, displayEnd)}px`,
+                        top: '4px'
+                      }}
+                      title={`${r.title} (${STATUS_LABEL[r.status]})`}
+                      onMouseDown={(e) => handleMouseDown(e, r)}
+                    >
+                      {r.title}
+                    </div>
+                  </div>
+                )})}
               </div>
             ))}
           </div>
-          {assigneeNames.map(assigneeName => (
-            <div key={assigneeName}>
-              <div className="bg-muted/50 px-2 py-1 text-sm font-bold border-b flex items-center gap-2">
-                {assigneeName}
-                <Badge variant="secondary" className="text-xs">{groupedByAssignee[assigneeName].length}</Badge>
-              </div>
-              {groupedByAssignee[assigneeName].map(r => {
-                const isDragging = dragging?.id === r.id
-                const displayStart = isDragging ? dragging.newStart : r.planned_start!
-                    const displayEnd = isDragging ? dragging.newEnd : r.planned_end!
-                    return (
-                <div key={r.id} className="relative h-8 border-b" style={{ width: `${totalDays * DAY_W}px` }}>
-                  <div
-                    className={cn(
-                      "absolute h-6 rounded px-2 text-xs flex items-center truncate",
-                      STATUS_COLORS[r.status],
-                      isDragging ? "cursor-grabbing" : "cursor-grab"
-                    )}
-                    style={{
-                      left: `${position(displayStart) * DAY_W}px`,
-                      width: `${width(displayStart, displayEnd)}px`,
-                      top: '4px'
-                    }}
-                    title={`${r.title} (${STATUS_LABEL[r.status]})`}
-                    onMouseDown={(e) => handleMouseDown(e, r)}
-                  >
-                    {r.title}
-                  </div>
-                </div>
-              )})}
-            </div>
-          ))}
         </div>
       </CardContent>
     </Card>
