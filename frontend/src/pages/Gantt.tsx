@@ -244,20 +244,15 @@ export default function Gantt() {
                   const displayEnd = isDragging ? dragging.newEnd : r.planned_end!
                   const startDay = position(displayStart)
                   const endDay = position(displayEnd)
-                  const endInHead = endDay <= HEAD
-                  const startInTail = startDay >= totalDays - TAIL
-                  const spansMiddle = startDay < HEAD && endDay > totalDays - TAIL
-                  const inMiddleOnly = startDay >= HEAD && endDay <= totalDays - TAIL
-                  const partiallySpansHead = startDay < HEAD && endDay > HEAD && endDay <= totalDays - TAIL
-                  const partiallySpansTail = startDay >= HEAD && startDay < totalDays - TAIL && endDay > totalDays - TAIL
+                  // ponytail: clean 3-region rule - render segment for EVERY region touched
 
                   return (
                   <div key={r.id} className="relative h-8 border-b w-full">
                     {/* Render bar segments based on collapse state */}
                     {isCollapsed ? (
                       <>
-                        {/* Head segment */}
-                        {(endInHead || partiallySpansHead || spansMiddle) && (
+                        {/* Head segment (startDay < HEAD) */}
+                        {startDay < HEAD && (
                           <div
                             className={cn(
                               "absolute h-6 rounded-l px-2 text-xs flex items-center truncate",
@@ -266,7 +261,7 @@ export default function Gantt() {
                             )}
                             style={{
                               left: `${startDay * DAY_W}px`,
-                              width: `${(endInHead || partiallySpansHead) ? (endDay - startDay) * DAY_W : (HEAD - startDay) * DAY_W}px`,
+                              width: `${(Math.min(endDay, HEAD) - startDay) * DAY_W}px`,
                               top: '4px'
                             }}
                             title={`${r.title} (${STATUS_LABEL[r.status]})`}
@@ -274,8 +269,8 @@ export default function Gantt() {
                             {r.title}
                           </div>
                         )}
-                        {/* Middle/collapse segment */}
-                        {(inMiddleOnly || spansMiddle) && (
+                        {/* Middle/collapse segment (touches the middle) */}
+                        {startDay < totalDays - TAIL && endDay > HEAD && (
                           <div
                             className={cn(
                               "absolute h-6 rounded px-2 text-xs flex items-center justify-center truncate",
@@ -289,11 +284,11 @@ export default function Gantt() {
                             }}
                             title={`${r.title} (${STATUS_LABEL[r.status]}) - 跨${endDay - startDay}天`}
                           >
-                            {inMiddleOnly ? r.title : `↔`}
+                            {startDay >= HEAD && endDay <= totalDays - TAIL ? r.title : `↔`}
                           </div>
                         )}
-                        {/* Tail segment - anchored from right */}
-                        {(startInTail || partiallySpansTail || spansMiddle) && (
+                        {/* Tail segment (endDay > totalDays - TAIL) */}
+                        {endDay > totalDays - TAIL && (
                           <div
                             className={cn(
                               "absolute h-6 rounded-r px-2 text-xs flex items-center truncate",
@@ -302,12 +297,12 @@ export default function Gantt() {
                             )}
                             style={{
                               right: `${(totalDays - endDay) * DAY_W}px`,
-                              width: `${(startInTail || partiallySpansTail) ? (endDay - startDay) * DAY_W : (endDay - (totalDays - TAIL)) * DAY_W}px`,
+                              width: `${(endDay - Math.max(startDay, totalDays - TAIL)) * DAY_W}px`,
                               top: '4px'
                             }}
                             title={`${r.title} (${STATUS_LABEL[r.status]})`}
                           >
-                            {spansMiddle ? '' : r.title}
+                            {startDay >= totalDays - TAIL ? r.title : ''}
                           </div>
                         )}
                       </>
