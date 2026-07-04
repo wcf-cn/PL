@@ -25,11 +25,13 @@ export default function Burndown() {
   const sprint = sprints.find(s => s.id === sid)
   if (!sprint) return <div>加载中…</div>
 
-  const total = reqs.reduce((sum, r) => sum + r.est_effort, 0)
-  const remaining = reqs.filter(r => !DONE_STATUSES.includes(r.status)).reduce((sum, r) => sum + r.est_effort, 0)
+  const total = reqs.reduce((sum, r) => sum + (r.est_effort || 0), 0)
+  const remaining = reqs.filter(r => !DONE_STATUSES.includes(r.status)).reduce((sum, r) => sum + (r.est_effort || 0), 0)
 
-  const start = new Date(sprint.start_date)
-  const end = new Date(sprint.end_date)
+  // Parse dates consistently as local midnight
+  const parseDate = (d: string) => { const x = new Date(d); x.setHours(0,0,0,0); return x }
+  const start = parseDate(sprint.start_date)
+  const end = parseDate(sprint.end_date)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
@@ -39,7 +41,7 @@ export default function Burndown() {
   ]
 
   const actualData = today >= start && today <= end
-    ? [{ date: new Date().toISOString().split('T')[0], 实际: remaining }]
+    ? [{ date: today.toISOString().split('T')[0], 实际: remaining }]
     : []
 
   return (

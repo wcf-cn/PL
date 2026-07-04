@@ -32,13 +32,15 @@ export default function Gantt() {
   const validReqs = reqs.filter(r => r.planned_start && r.planned_end)
   if (!validReqs.length) return <div>该冲刺无计划日期的需求</div>
 
-  const dates = validReqs.flatMap(r => [new Date(r.planned_start!), new Date(r.planned_end!)])
+  // Parse dates consistently at midnight local time
+  const parseDate = (d: string) => { const x = new Date(d); x.setHours(0,0,0,0); return x }
+  const dates = validReqs.flatMap(r => [parseDate(r.planned_start!), parseDate(r.planned_end!)])
   const minDate = new Date(Math.min(...dates.map(d => d.getTime())))
   const maxDate = new Date(Math.max(...dates.map(d => d.getTime())))
   const totalDays = Math.ceil((maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24))
 
   const position = (dateStr: string) => {
-    const date = new Date(dateStr)
+    const date = parseDate(dateStr)
     return ((date.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24)) / totalDays * 100
   }
 

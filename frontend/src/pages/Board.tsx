@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
-import { STATUS_LABEL, STATUS_ORDER, STATUS_PROGRESS, type Requirement, type Status, type Member, type Sprint, type Priority } from '../types'
+import { STATUS_LABEL, STATUS_ORDER, calcProgress, type Requirement, type Status, type Member, type Sprint, type Priority } from '../types'
 const PRIO_COLOR: Record<string,string> = { P0:'bg-red-100 text-red-700', P1:'bg-yellow-100 text-yellow-700', P2:'bg-gray-100 text-gray-700' }
 
 export default function Board() {
@@ -22,8 +22,9 @@ export default function Board() {
   }, [])
   const onDrop = async (status: Status, id: number) => {
     const r = items.find(x => x.id === id); if (!r || r.status === status) return
-    setItems(prev => prev.map(x => x.id === id ? { ...x, status, progress: STATUS_PROGRESS[status] } : x))
-    await api.requirements.update(id, { status, progress: STATUS_PROGRESS[status] })
+    const newProgress = calcProgress(r.est_effort, r.actual_effort)
+    setItems(prev => prev.map(x => x.id === id ? { ...x, status, progress: newProgress } : x))
+    await api.requirements.update(id, { status, progress: newProgress })
   }
 
   const loadMilestones = async (reqId: number) => {
@@ -79,15 +80,17 @@ export default function Board() {
     e.preventDefault()
     if (!form.title.trim()) return
     try {
+      const est = Number(form.est_effort) || 0
+      const actual = Number(form.actual_effort) || 0
       const payload = {
         title: form.title,
         status: form.status,
         priority: form.priority,
         assignee: form.assignee,
         module: form.module || '',
-        est_effort: Number(form.est_effort) || 0,
-        actual_effort: Number(form.actual_effort) || 0,
-        progress: STATUS_PROGRESS[form.status],
+        est_effort: est,
+        actual_effort: actual,
+        progress: calcProgress(est, actual),
         planned_start: form.planned_start || null,
         planned_end: form.planned_end || null,
         assigned_sprint: form.assigned_sprint
@@ -262,7 +265,7 @@ function Column({ status, items, onDrop, onEdit }:{ status:Status; items:Require
               <span className={`px-1 rounded ${PRIO_COLOR[r.priority]}`}>{r.priority}</span>
               <span>{r.assignee_name||'未分配'}</span>
               <span>预计 {r.est_effort}h{r.actual_effort > 0 ? ` / 已投 ${r.actual_effort}h` : ''}</span>
-              <span>{STATUS_PROGRESS[r.status]}%</span>
+              <span>{r.progress}%</span>
               {(r.planned_start || r.planned_end) && <span>{r.planned_start || '?'}~{r.planned_end || '?'}</span>}
             </div>
           </div>
