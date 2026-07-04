@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
-import type { Sprint, Requirement, Status } from '../types'
+import { STATUS_LABEL, type Sprint, type Requirement, type Status } from '../types'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
+import { Badge } from '../components/ui/badge'
 import { cn } from '../lib/utils'
 
 const STATUS_COLORS: Record<Status, string> = {
@@ -33,7 +34,7 @@ export default function Gantt() {
   }, [sid])
 
   const validReqs = reqs.filter(r => r.planned_start && r.planned_end)
-  if (!validReqs.length) return <Card><CardContent className="p-6">该冲刺无计划日期的需求</CardContent></Card>
+  if (!validReqs.length) return <Card className="p-6"><CardContent className="text-sm text-muted-foreground">该迭代无计划日期的需求</CardContent></Card>
 
   // Parse dates consistently at midnight local time
   const parseDate = (d: string) => { const x = new Date(d); x.setHours(0,0,0,0); return x }
@@ -70,7 +71,7 @@ export default function Gantt() {
   const assigneeNames = Object.keys(groupedByAssignee)
 
   return (
-    <Card>
+    <Card className="p-6 space-y-4">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>甘特图</CardTitle>
@@ -84,19 +85,31 @@ export default function Gantt() {
           </Select>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {/* Status Legend */}
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className="text-muted-foreground">状态:</span>
+          {(Object.keys(STATUS_COLORS) as Status[]).map(status => (
+            <div key={status} className="flex items-center gap-1">
+              <div className={cn("w-3 h-3 rounded", STATUS_COLORS[status])} />
+              <span>{STATUS_LABEL[status]}</span>
+            </div>
+          ))}
+        </div>
+
         <div className="relative border-l border-r border-b rounded-lg overflow-x-auto bg-muted/30">
           <div className="flex border-b text-xs">
             {dateAxis.map(d => (
-              <div key={d.toISOString()} className="flex-shrink-0 p-1" style={{ width: `${100 / (totalDays + 1)}%` }}>
+              <div key={d.toISOString()} className="flex-shrink-0 p-1 text-muted-foreground" style={{ width: `${100 / (totalDays + 1)}%` }}>
                 {formatDate(d)}
               </div>
             ))}
           </div>
           {assigneeNames.map(assigneeName => (
             <div key={assigneeName}>
-              <div className="bg-muted/50 px-2 py-1 text-sm font-medium border-b">
+              <div className="bg-muted/50 px-2 py-1 text-sm font-bold border-b flex items-center gap-2">
                 {assigneeName}
+                <Badge variant="secondary" className="text-xs">{groupedByAssignee[assigneeName].length}</Badge>
               </div>
               {groupedByAssignee[assigneeName].map(r => (
                 <div key={r.id} className="relative h-8 border-b">
@@ -110,7 +123,7 @@ export default function Gantt() {
                       width: `${width(r.planned_start!, r.planned_end!)}%`,
                       top: '4px'
                     }}
-                    title={r.title}
+                    title={`${r.title} (${STATUS_LABEL[r.status]})`}
                   >
                     {r.title}
                   </div>

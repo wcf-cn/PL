@@ -24,7 +24,10 @@ vi.mock('../api', () => ({
 describe('Burndown', () => {
   it('shows total effort and displays burndown chart', async () => {
     render(<Burndown />)
-    await waitFor(() => expect(screen.getByText(/总工时 15h/)).toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.getByText(/总工时:.*15h/)).toBeInTheDocument()
+      expect(screen.getByText(/剩余:.*5h/)).toBeInTheDocument()
+    })
     await waitFor(() => expect(screen.getByText('燃尽图')).toBeInTheDocument())
   })
 })

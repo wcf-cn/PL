@@ -98,7 +98,7 @@ describe('Schedule', () => {
 
     // Should show sprint selector with active sprint selected
     await waitFor(() => {
-      expect(screen.getByText('选择迭代')).toBeInTheDocument()
+      expect(screen.getByRole('combobox')).toBeInTheDocument()
     })
 
     // Should show active members (张三, 李四) but not inactive (王五)
@@ -155,7 +155,7 @@ describe('Schedule', () => {
     render(<Schedule />)
 
     await waitFor(() => {
-      expect(screen.getByText('选择迭代')).toBeInTheDocument()
+      expect(screen.getByRole('combobox')).toBeInTheDocument()
     })
 
     const selectElement = screen.getByRole('combobox')

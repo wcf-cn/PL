@@ -33,30 +33,40 @@ export default function Capacity() {
           </Select>
         </div>
       </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>成员</TableHead>
-              <TableHead>容量(h)</TableHead>
-              <TableHead>占用(h)</TableHead>
-              <TableHead>利用率</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map(r => (
-              <TableRow key={r.member_id}>
-                <TableCell>{r.member}</TableCell>
-                <TableCell>{r.capacity}</TableCell>
-                <TableCell>{r.load}</TableCell>
-                <TableCell>{utilizationBadge(r.utilization)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        <p className="text-xs text-muted-foreground mt-4">
-          绿色 &lt;80% · 黄色 80–100% · 红色 &gt;100% 超载。已按利用率降序(后端排序)。
-        </p>
+      <CardContent className="space-y-4">
+        {rows.length === 0 ? (
+          <div className="text-sm text-muted-foreground">暂无数据</div>
+        ) : (
+          <>
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <span>总容量: {rows.reduce((sum, r) => sum + r.capacity, 0)}h</span>
+              <span>总占用: {rows.reduce((sum, r) => sum + r.load, 0)}h</span>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>成员</TableHead>
+                  <TableHead>容量(h)</TableHead>
+                  <TableHead>占用(h)</TableHead>
+                  <TableHead>利用率</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map(r => (
+                  <TableRow key={r.member_id}>
+                    <TableCell>{r.member}</TableCell>
+                    <TableCell>{r.capacity}</TableCell>
+                    <TableCell>{r.load}</TableCell>
+                    <TableCell>{utilizationBadge(r.utilization)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <p className="text-xs text-muted-foreground">
+              绿色 &lt;80% · 黄色 80–100% · 红色 &gt;100% 超载。已按利用率降序(后端排序)。
+            </p>
+          </>
+        )}
       </CardContent>
     </Card>
   )

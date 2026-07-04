@@ -29,7 +29,8 @@ export default function Burndown() {
     }
   }, [sid])
 
-  if (loading || !burndownData) return <div>加载中…</div>
+  if (loading) return <div className="p-6 text-sm text-muted-foreground">加载中…</div>
+  if (!burndownData) return <Card className="p-6"><CardContent className="text-sm text-muted-foreground">暂无数据</CardContent></Card>
 
   const { sprint, total_effort, snapshots } = burndownData
 
@@ -74,38 +75,41 @@ export default function Burndown() {
           </Select>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="mb-4">
-          <p className="text-sm text-muted-foreground">
-            总工时 {total_effort}h
-          </p>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-4 text-sm">
+          <span className="text-muted-foreground">总工时: {total_effort}h</span>
+          <span className="text-muted-foreground">剩余: {snapshots.length > 0 ? snapshots[snapshots.length - 1].remaining_effort : 0}h</span>
         </div>
         <ResponsiveContainer width="100%" height={400}>
           <LineChart data={allData}>
-            <CartesianGrid strokeDasharray="3 3" />
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 12 }}
+              tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+              stroke="hsl(var(--muted-foreground))"
             />
             <YAxis
-              tick={{ fontSize: 12 }}
-              label={{ value: '剩余工时 (h)', angle: -90, position: 'insideLeft' }}
+              tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+              stroke="hsl(var(--muted-foreground))"
+              label={{ value: '剩余工时 (h)', angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))' }}
             />
-            <Tooltip />
+            <Tooltip
+              contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+            />
             <Legend />
             <Line
               type="linear"
               dataKey="理想线"
-              stroke="#8884d8"
+              stroke="hsl(var(--chart-1))"
               strokeDasharray="5 5"
               dot={false}
             />
             <Line
               type="monotone"
               dataKey="实际线"
-              stroke="#82ca9d"
+              stroke="hsl(var(--chart-2))"
               strokeWidth={2}
-              dot={{ r: 4 }}
+              dot={{ r: 4, fill: 'hsl(var(--chart-2))' }}
             />
           </LineChart>
         </ResponsiveContainer>
