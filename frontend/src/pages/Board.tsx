@@ -10,6 +10,9 @@ export default function Board() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [milestones, setMilestones] = useState<any[]>([])
+  const [mtitle, setMTitle] = useState('')
+  const [mdate, setMDate] = useState('')
+  const [mnote, setMNote] = useState('')
   const [error, setError] = useState('')
   const load = () => api.requirements.list().then(setItems)
   useEffect(() => {
@@ -53,6 +56,7 @@ export default function Board() {
     setMilestones([])
     setError('')
     setForm({ title: '', status: 'backlog', priority: 'P1', assignee: null, module: '', est_effort: '', assigned_sprint: null })
+    setMTitle(''); setMDate(''); setMNote('')
   }
 
   const [form, setForm] = useState({
@@ -96,17 +100,12 @@ export default function Board() {
     }
   }
 
-  const addMilestone = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const addMilestone = async () => {
     if (!editingId) return
-    const form = e.target as HTMLFormElement
-    const title = (form.elements.namedItem('milestone_title') as HTMLInputElement).value
-    const date = (form.elements.namedItem('milestone_date') as HTMLInputElement).value
-    const note = (form.elements.namedItem('milestone_note') as HTMLInputElement).value
-    if (!title.trim() || !date) return
+    if (!mtitle.trim() || !mdate) return
     try {
-      await api.milestones.create({ requirement: editingId, title, date, note })
-      form.reset()
+      await api.milestones.create({ requirement: editingId, title: mtitle, date: mdate, note: mnote })
+      setMTitle(''); setMDate(''); setMNote('')
       loadMilestones(editingId)
     } catch {
       setError('添加里程碑失败')
@@ -186,14 +185,14 @@ export default function Board() {
                 ))}
                 {milestones.length === 0 && <div className="text-gray-400 text-sm">暂无里程碑</div>}
               </div>
-              <form onSubmit={addMilestone} className="grid grid-cols-3 gap-2">
-                <input name="milestone_title" placeholder="里程碑标题" className="px-2 py-1 border rounded text-sm" />
-                <input name="milestone_date" type="date" className="px-2 py-1 border rounded text-sm" />
+              <div className="grid grid-cols-3 gap-2">
+                <input value={mtitle} onChange={e=>setMTitle(e.target.value)} placeholder="里程碑标题" className="px-2 py-1 border rounded text-sm" />
+                <input type="date" value={mdate} onChange={e=>setMDate(e.target.value)} className="px-2 py-1 border rounded text-sm" />
                 <div className="flex gap-2">
-                  <input name="milestone_note" placeholder="备注" className="flex-1 px-2 py-1 border rounded text-sm" />
-                  <button type="submit" className="px-3 py-1 bg-green-500 text-white rounded text-sm">添加</button>
+                  <input value={mnote} onChange={e=>setMNote(e.target.value)} placeholder="备注" className="flex-1 px-2 py-1 border rounded text-sm" />
+                  <button type="button" onClick={addMilestone} className="px-3 py-1 bg-green-500 text-white rounded text-sm">添加</button>
                 </div>
-              </form>
+              </div>
             </div>
           )}
 
@@ -220,7 +219,7 @@ function Column({ status, items, onDrop, onEdit }:{ status:Status; items:Require
     <div
       onDragOver={e=>{e.preventDefault();setOver(true)}}
       onDragLeave={()=>setOver(false)}
-      onDrop={()=>{setOver(false)}}
+      onDrop={(e:any)=>{setOver(false); const id=Number((e as any).dataTransfer.getData('id')); if (id) onDrop(status, id)}}
       className={`w-64 shrink-0 p-2 rounded bg-gray-50 ${over?'ring-2 ring-blue-400':''}`}
     >
       <div className="flex justify-between mb-2">
