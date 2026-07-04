@@ -5,9 +5,10 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
+import { Card, CardContent } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
 import { Separator } from '../components/ui/separator'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog'
 import { cn } from '../lib/utils'
 
 const PRIO_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -77,6 +78,14 @@ export default function Board() {
     setMTitle(''); setMDate(''); setMNote('')
   }
 
+  const openCreate = () => {
+    setEditingId(null)
+    setForm({ title: '', status: 'backlog', priority: 'P1', assignee: null, module: '', est_effort: '', actual_effort: '', planned_start: '', planned_end: '', assigned_sprint: null })
+    setMilestones([])
+    setError('')
+    setShowForm(true)
+  }
+
   const [form, setForm] = useState({
     title: '',
     status: 'backlog' as Status,
@@ -142,19 +151,18 @@ export default function Board() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Button onClick={() => setShowForm(!showForm)}>+ 新建需求</Button>
+        <Button onClick={openCreate}>+ 新建需求</Button>
         <Button variant="outline" onClick={() => setShowDone(!showDone)}>
           {showDone ? '隐藏已上线' : '显示已上线'}
         </Button>
       </div>
 
-      {showForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{editingId ? '编辑需求' : '新建需求'}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={createReq} className="space-y-4">
+      <Dialog open={showForm} onOpenChange={(open) => { if (!open) closeForm() }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingId ? '编辑需求' : '新建需求'}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={createReq} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="title">标题 *</Label>
@@ -305,14 +313,13 @@ export default function Board() {
               )}
 
               {error && <div className="text-destructive text-sm">{error}</div>}
-              <div className="flex gap-2">
+              <DialogFooter>
                 <Button type="submit">提交</Button>
                 <Button type="button" variant="outline" onClick={closeForm}>取消</Button>
-              </div>
+              </DialogFooter>
             </form>
-          </CardContent>
-        </Card>
-      )}
+        </DialogContent>
+      </Dialog>
 
       <div className="flex gap-3 overflow-x-auto pb-4">
         {STATUS_ORDER.filter(st => showDone || st !== 'done').map(st => (
