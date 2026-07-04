@@ -44,6 +44,15 @@ export interface CapacityRow {
   utilization:number
 }
 
+export interface Milestone {
+  id:number;
+  requirement:number;
+  title:string;
+  date:string;
+  note:string;
+  created_at:string;
+}
+
 export const STATUS_LABEL: Record<Status,string> = {
   backlog:'待评审',
   scheduled:'排期中',

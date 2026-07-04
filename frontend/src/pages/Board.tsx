@@ -8,6 +8,8 @@ export default function Board() {
   const [members, setMembers] = useState<Member[]>([])
   const [sprints, setSprints] = useState<Sprint[]>([])
   const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [milestones, setMilestones] = useState<any[]>([])
   const [error, setError] = useState('')
   const load = () => api.requirements.list().then(setItems)
   useEffect(() => {
@@ -19,6 +21,38 @@ export default function Board() {
     const r = items.find(x => x.id === id); if (!r || r.status === status) return
     setItems(prev => prev.map(x => x.id === id ? { ...x, status } : x))
     await api.requirements.update(id, { status })
+  }
+
+  const loadMilestones = async (reqId: number) => {
+    try {
+      const data = await api.milestones.list({ requirement: String(reqId) })
+      setMilestones(data)
+    } catch {
+      setMilestones([])
+    }
+  }
+
+  const startEdit = (item: Requirement) => {
+    setEditingId(item.id)
+    setForm({
+      title: item.title,
+      status: item.status,
+      priority: item.priority,
+      assignee: item.assignee,
+      module: item.module,
+      est_effort: String(item.est_effort),
+      assigned_sprint: item.assigned_sprint
+    })
+    setShowForm(true)
+    loadMilestones(item.id)
+  }
+
+  const closeForm = () => {
+    setShowForm(false)
+    setEditingId(null)
+    setMilestones([])
+    setError('')
+    setForm({ title: '', status: 'backlog', priority: 'P1', assignee: null, module: '', est_effort: '', assigned_sprint: null })
   }
 
   const [form, setForm] = useState({
@@ -44,18 +78,38 @@ export default function Board() {
         est_effort: Number(form.est_effort) || 0,
         assigned_sprint: form.assigned_sprint
       }
-      const created = await api.requirements.create(payload)
-      setItems(prev => [created, ...prev])
-      setShowForm(false)
-      setError('')
-      setForm({ title: '', status: 'backlog', priority: 'P1', assignee: null, module: '', est_effort: '', assigned_sprint: null })
+      if (editingId) {
+        const updated = await api.requirements.update(editingId, payload)
+        setItems(prev => prev.map(x => x.id === editingId ? updated : x))
+      } else {
+        const created = await api.requirements.create(payload)
+        setItems(prev => [created, ...prev])
+      }
+      closeForm()
     } catch (err: any) {
       const d = err.response?.data
-      let msg = '创建失败'
+      let msg = editingId ? '更新失败' : '创建失败'
       if (typeof d === 'string') msg = d
       else if (d?.detail) msg = d.detail
       else if (d && typeof d === 'object') msg = Object.entries(d).map(([f, e]) => `${f}: ${Array.isArray(e) ? e.join(',') : e}`).join('; ')
       setError(msg)
+    }
+  }
+
+  const addMilestone = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingId) return
+    const form = e.target as HTMLFormElement
+    const title = (form.elements.namedItem('milestone_title') as HTMLInputElement).value
+    const date = (form.elements.namedItem('milestone_date') as HTMLInputElement).value
+    const note = (form.elements.namedItem('milestone_note') as HTMLInputElement).value
+    if (!title.trim() || !date) return
+    try {
+      await api.milestones.create({ requirement: editingId, title, date, note })
+      form.reset()
+      loadMilestones(editingId)
+    } catch {
+      setError('添加里程碑失败')
     }
   }
 
@@ -69,6 +123,7 @@ export default function Board() {
 
       {showForm && (
         <form onSubmit={createReq} className="mb-4 p-4 bg-gray-50 rounded">
+          <div className="mb-2 font-bold">{editingId ? '编辑需求' : '新建需求'}</div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">标题 *</label>
@@ -118,24 +173,48 @@ export default function Board() {
               </select>
             </div>
           </div>
+
+          {editingId && (
+            <div className="mt-4 pt-4 border-t">
+              <div className="font-bold mb-2">里程碑 ({milestones.length})</div>
+              <div className="space-y-2 mb-3">
+                {milestones.map(m => (
+                  <div key={m.id} className="text-sm p-2 bg-white rounded border">
+                    <div className="font-medium">{m.title}</div>
+                    <div className="text-gray-500">{m.date} {m.note && `- ${m.note}`}</div>
+                  </div>
+                ))}
+                {milestones.length === 0 && <div className="text-gray-400 text-sm">暂无里程碑</div>}
+              </div>
+              <form onSubmit={addMilestone} className="grid grid-cols-3 gap-2">
+                <input name="milestone_title" placeholder="里程碑标题" className="px-2 py-1 border rounded text-sm" />
+                <input name="milestone_date" type="date" className="px-2 py-1 border rounded text-sm" />
+                <div className="flex gap-2">
+                  <input name="milestone_note" placeholder="备注" className="flex-1 px-2 py-1 border rounded text-sm" />
+                  <button type="submit" className="px-3 py-1 bg-green-500 text-white rounded text-sm">添加</button>
+                </div>
+              </form>
+            </div>
+          )}
+
           {error && <div className="mt-2 text-red-600 text-sm">{error}</div>}
           <div className="mt-3 flex gap-2">
             <button type="submit" className="px-4 py-1 bg-blue-500 text-white rounded">提交</button>
-            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-1 bg-gray-300 rounded">取消</button>
+            <button type="button" onClick={closeForm} className="px-4 py-1 bg-gray-300 rounded">取消</button>
           </div>
         </form>
       )}
 
       <div className="flex gap-3 overflow-x-auto">
         {STATUS_ORDER.map(st => (
-          <Column key={st} status={st} items={items.filter(r => r.status === st)} onDrop={onDrop} />
+          <Column key={st} status={st} items={items.filter(r => r.status === st)} onDrop={onDrop} onEdit={startEdit} />
         ))}
       </div>
     </div>
   )
 }
 
-function Column({ status, items, onDrop }:{ status:Status; items:Requirement[]; onDrop:(s:Status,id:number)=>void }) {
+function Column({ status, items, onDrop, onEdit }:{ status:Status; items:Requirement[]; onDrop:(s:Status,id:number)=>void; onEdit:(r:Requirement)=>void }) {
   const [over, setOver] = useState(false)
   return (
     <div
@@ -152,7 +231,7 @@ function Column({ status, items, onDrop }:{ status:Status; items:Requirement[]; 
         className="min-h-[40px] space-y-2"
       >
         {items.map(r => (
-          <div key={r.id} draggable onDragStart={e=>(e as any).dataTransfer.setData('id', String(r.id))}
+          <div key={r.id} draggable onDragStart={e=>(e as any).dataTransfer.setData('id', String(r.id))} onDoubleClick={()=>onEdit(r)}
             className="p-2 bg-white rounded shadow cursor-move">
             <div className="font-medium">{r.title}</div>
             <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">

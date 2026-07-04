@@ -9,7 +9,7 @@ vi.mock('../api', () => ({
       list: vi.fn().mockResolvedValue([
         { id:1, title:'登录', status:'in_progress', priority:'P0', assignee_name:'张三', est_effort:8, progress:30 },
       ]),
-      update: vi.fn(),
+      update: vi.fn().mockResolvedValue({ id:1, title:'登录', status:'in_progress', priority:'P0', assignee_name:'张三', est_effort:8, progress:30 }),
       create: vi.fn().mockResolvedValue({ id:99, title:'新需求', status:'backlog', priority:'P1', assignee:1, assignee_name:'张三', module:'', est_effort:4, progress:0, assigned_sprint:null }),
     },
     members: { list: vi.fn().mockResolvedValue([
@@ -19,6 +19,10 @@ vi.mock('../api', () => ({
     sprints: { list: vi.fn().mockResolvedValue([
       { id:1, name:'S1', start_date:'2026-01-01', end_date:'2026-01-14', is_active:true, weeks:2 },
     ])},
+    milestones: {
+      list: vi.fn().mockResolvedValue([]),
+      create: vi.fn().mockResolvedValue({ id:1, requirement:1, title:'M1', date:'2026-01-01', note:'', created_at:'2026-01-01T00:00:00Z' }),
+    },
   }
 }))
 
@@ -59,5 +63,20 @@ describe('Board', () => {
     await waitFor(() => {
       expect(screen.getByText('新需求')).toBeInTheDocument()
     })
+  })
+
+  it('opens edit form on double-click', async () => {
+    render(<Board />)
+
+    await waitFor(() => expect(screen.getByText('登录')).toBeInTheDocument())
+
+    const user = userEvent.setup()
+    const loginCard = screen.getByText('登录')
+    await user.dblClick(loginCard)
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('登录')).toBeInTheDocument()
+    })
+    expect(screen.getByText('编辑需求')).toBeInTheDocument()
   })
 })
