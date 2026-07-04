@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import Board from './Board'
+
 vi.mock('../api', () => ({
   api: {
     requirements: {
@@ -8,14 +10,54 @@ vi.mock('../api', () => ({
         { id:1, title:'登录', status:'in_progress', priority:'P0', assignee_name:'张三', est_effort:8, progress:30 },
       ]),
       update: vi.fn(),
+      create: vi.fn().mockResolvedValue({ id:99, title:'新需求', status:'backlog', priority:'P1', assignee:1, assignee_name:'张三', module:'', est_effort:4, progress:0, assigned_sprint:null }),
     },
-    sprints: { list: vi.fn().mockResolvedValue([{ id:1, name:'S1', start_date:'', end_date:'', is_active:true, weeks:2 }]) },
+    members: { list: vi.fn().mockResolvedValue([
+      { id:1, name:'张三', week_capacity:40, modules:'', active:true },
+      { id:2, name:'李四', week_capacity:40, modules:'', active:true },
+    ])},
+    sprints: { list: vi.fn().mockResolvedValue([
+      { id:1, name:'S1', start_date:'2026-01-01', end_date:'2026-01-14', is_active:true, weeks:2 },
+    ])},
   }
 }))
+
 describe('Board', () => {
   it('renders columns and cards', async () => {
     render(<Board />)
     await waitFor(() => expect(screen.getByText('登录')).toBeInTheDocument())
     expect(screen.getByText('开发中')).toBeInTheDocument()
+  })
+
+  it('creates a new requirement', async () => {
+    const { api } = await import('../api')
+    render(<Board />)
+
+    await waitFor(() => expect(screen.getByText('+ 新建需求')).toBeInTheDocument())
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText('+ 新建需求'))
+
+    const titleInput = screen.getByPlaceholderText('请输入标题')
+    await user.type(titleInput, '新需求')
+
+    const submitButton = screen.getByRole('button', { name: '提交' })
+    await user.click(submitButton)
+
+    await waitFor(() => {
+      expect(api.requirements.create).toHaveBeenCalledWith({
+        title: '新需求',
+        status: 'backlog',
+        priority: 'P1',
+        assignee: null,
+        module: '',
+        est_effort: 0,
+        assigned_sprint: null
+      })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('新需求')).toBeInTheDocument()
+    })
   })
 })
