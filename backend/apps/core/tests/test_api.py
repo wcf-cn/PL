@@ -29,3 +29,8 @@ def test_requirement_create_and_capacity(client):
     assert r2.status_code == 200
     row = next(x for x in r2.data if x['member'] == '张三')
     assert row['utilization'] == 0.75
+
+@pytest.mark.django_db
+def test_capacity_view_404_on_invalid_sprint(client):
+    r = client.get('/api/capacity/?sprint=99999')
+    assert r.status_code == 404

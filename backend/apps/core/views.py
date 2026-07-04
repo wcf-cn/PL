@@ -3,6 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from django.contrib.auth import authenticate, login as django_login, logout as django_logout
+from django.shortcuts import get_object_or_404
 from .models import Member, Sprint, Requirement
 from .serializers import MemberSerializer, SprintSerializer, RequirementSerializer
 from . import capacity
@@ -31,7 +32,7 @@ def capacity_view(request):
     sprint_id = request.query_params.get('sprint')
     if not sprint_id:
         return Response({'detail': 'sprint 参数必填'}, status=status.HTTP_400_BAD_REQUEST)
-    sprint = Sprint.objects.get(pk=sprint_id)
+    sprint = get_object_or_404(Sprint, pk=sprint_id)
     rows = []
     for m in Member.objects.filter(active=True):
         rows.append({
