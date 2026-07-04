@@ -59,7 +59,7 @@ export default function Gantt() {
     return (endDays - startDays) * DAY_W
   }
 
-  const formatDate = (date: Date) => date.toISOString().split('T')[0]
+  const formatDate = (date: Date) => `${date.getMonth() + 1}/${date.getDate()}`
 
   // Date helper: add N days to YYYY-MM-DD string, returning new YYYY-MM-DD at local midnight
   const addDays = (dateStr: string, days: number): string => {
@@ -74,9 +74,6 @@ export default function Gantt() {
     d.setDate(d.getDate() + i)
     return d
   })
-
-  // Calculate label interval to avoid overlap
-  const labelInterval = Math.max(1, Math.floor(totalDays / 20))
 
   // Group requirements by assignee
   const groupedByAssignee = validReqs.reduce((acc, req) => {
@@ -166,16 +163,11 @@ export default function Gantt() {
 
         <div ref={timelineRef} className="relative border-l border-r border-b rounded-lg overflow-x-auto bg-muted/30">
           <div className="flex border-b text-xs" style={{ width: `${totalDays * DAY_W}px` }}>
-            {dateAxis.map((d, i) => (
+            {dateAxis.map(d => (
               <div
                 key={d.toISOString()}
-                className="flex-shrink-0 p-1 text-muted-foreground text-xs whitespace-nowrap"
-                style={{
-                  width: `${DAY_W}px`,
-                  transform: i % labelInterval === 0 ? 'rotate(-45deg)' : 'rotate(-45deg)',
-                  transformOrigin: 'top left',
-                  opacity: i % labelInterval === 0 ? 1 : 0.3
-                }}
+                className="flex-shrink-0 px-1 py-1 text-muted-foreground text-[10px] text-center border-r"
+                style={{ width: `${DAY_W}px` }}
               >
                 {formatDate(d)}
               </div>
