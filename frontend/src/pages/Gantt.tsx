@@ -16,6 +16,9 @@ const STATUS_COLORS: Record<Status, string> = {
   paused: 'bg-gray-400'
 }
 
+// Fixed day width for consistent timeline rendering
+const DAY_W = 44
+
 export default function Gantt() {
   const [sprints, setSprints] = useState<Sprint[]>([])
   const [sid, setSid] = useState<number | ''>('')
@@ -47,10 +50,14 @@ export default function Gantt() {
 
   const position = (dateStr: string) => {
     const date = parseDate(dateStr)
-    return ((date.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24)) / totalDays * 100
+    return Math.floor((date.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24))
   }
 
-  const width = (start: string, end: string) => position(end) - position(start)
+  const width = (start: string, end: string) => {
+    const startDays = position(start)
+    const endDays = position(end)
+    return (endDays - startDays) * DAY_W
+  }
 
   const formatDate = (date: Date) => date.toISOString().split('T')[0]
 
@@ -68,6 +75,9 @@ export default function Gantt() {
     return d
   })
 
+  // Calculate label interval to avoid overlap
+  const labelInterval = Math.max(1, Math.floor(totalDays / 20))
+
   // Group requirements by assignee
   const groupedByAssignee = validReqs.reduce((acc, req) => {
     const assigneeName = req.assignee_name || '未分配'
@@ -84,7 +94,6 @@ export default function Gantt() {
   const handleMouseDown = (e: React.MouseEvent, req: Requirement) => {
     const timeline = timelineRef.current
     if (!timeline) return
-    const containerWidth = timeline.getBoundingClientRect().width
     const startClientX = e.clientX
 
     const origStart = req.planned_start!
@@ -103,7 +112,7 @@ export default function Gantt() {
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragging) return
       const deltaX = e.clientX - startClientX
-      const deltaDays = Math.round(deltaX / containerWidth * totalDays)
+      const deltaDays = Math.round(deltaX / DAY_W)
       const newStart = addDays(origStart, deltaDays)
       const newEnd = addDays(origEnd, deltaDays)
       setDragging(prev => prev ? { ...prev, newStart, newEnd } : null)
@@ -156,9 +165,18 @@ export default function Gantt() {
         </div>
 
         <div ref={timelineRef} className="relative border-l border-r border-b rounded-lg overflow-x-auto bg-muted/30">
-          <div className="flex border-b text-xs">
-            {dateAxis.map(d => (
-              <div key={d.toISOString()} className="flex-shrink-0 p-1 text-muted-foreground" style={{ width: `${100 / (totalDays + 1)}%` }}>
+          <div className="flex border-b text-xs" style={{ width: `${totalDays * DAY_W}px` }}>
+            {dateAxis.map((d, i) => (
+              <div
+                key={d.toISOString()}
+                className="flex-shrink-0 p-1 text-muted-foreground text-xs whitespace-nowrap"
+                style={{
+                  width: `${DAY_W}px`,
+                  transform: i % labelInterval === 0 ? 'rotate(-45deg)' : 'rotate(-45deg)',
+                  transformOrigin: 'top left',
+                  opacity: i % labelInterval === 0 ? 1 : 0.3
+                }}
+              >
                 {formatDate(d)}
               </div>
             ))}
@@ -174,7 +192,7 @@ export default function Gantt() {
                 const displayStart = isDragging ? dragging.newStart : r.planned_start!
                     const displayEnd = isDragging ? dragging.newEnd : r.planned_end!
                     return (
-                <div key={r.id} className="relative h-8 border-b">
+                <div key={r.id} className="relative h-8 border-b" style={{ width: `${totalDays * DAY_W}px` }}>
                   <div
                     className={cn(
                       "absolute h-6 rounded px-2 text-xs flex items-center truncate",
@@ -182,8 +200,8 @@ export default function Gantt() {
                       isDragging ? "cursor-grabbing" : "cursor-grab"
                     )}
                     style={{
-                      left: `${position(displayStart)}%`,
-                      width: `${width(displayStart, displayEnd)}%`,
+                      left: `${position(displayStart) * DAY_W}px`,
+                      width: `${width(displayStart, displayEnd)}px`,
                       top: '4px'
                     }}
                     title={`${r.title} (${STATUS_LABEL[r.status]})`}
