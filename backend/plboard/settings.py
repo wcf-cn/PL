@@ -1,5 +1,6 @@
 from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
+FRONTEND_DIST = BASE_DIR.parent / 'frontend' / 'dist'
 SECRET_KEY = 'dev-insecure-change-me'  # 个人自用本地,生产再换
 DEBUG = True
 ALLOWED_HOSTS = ['*']  # 本地+Tailscale
@@ -22,7 +23,7 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'plboard.urls'
 TEMPLATES = [{
     'BACKEND': 'django.template.backends.django.DjangoTemplates',
-    'DIRS': [], 'APP_DIRS': True,
+    'DIRS': [FRONTEND_DIST] if FRONTEND_DIST.exists() else [], 'APP_DIRS': True,
     'OPTIONS': {'context_processors': [
         'django.template.context_processors.debug',
         'django.template.context_processors.request',
@@ -46,3 +47,6 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': ['rest_framework.authentication.SessionAuthentication'],
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAuthenticated'],
 }
+if FRONTEND_DIST.exists():
+    STATICFILES_DIRS = [FRONTEND_DIST / 'assets']
+STATIC_ROOT = BASE_DIR / 'staticfiles'
