@@ -334,7 +334,7 @@ function Column({ status, items, onDrop, onEdit }:{ status:Status; items:Require
         <Badge variant="secondary">{items.length}</Badge>
       </div>
       <div
-        onDrop={e=>{e.stopPropagation(); onDrop(status, Number((e as any).dataTransfer.getData('id')))}}
+        onDrop={e=>{e.stopPropagation(); setOver(false); onDrop(status, Number((e as any).dataTransfer.getData('id')))}}
         className="min-h-[300px] space-y-2"
       >
         {items.map(r => (
