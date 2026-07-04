@@ -7,10 +7,10 @@ vi.mock('../api', () => ({
   api: {
     requirements: {
       list: vi.fn().mockResolvedValue([
-        { id:1, title:'登录', status:'in_progress', priority:'P0', assignee_name:'张三', est_effort:8, progress:30 },
+        { id:1, title:'登录', status:'in_progress', priority:'P0', assignee_name:'张三', est_effort:8, actual_effort:4, progress:30, planned_start:'2026-01-01', planned_end:'2026-01-15' },
       ]),
-      update: vi.fn().mockResolvedValue({ id:1, title:'登录', status:'in_progress', priority:'P0', assignee_name:'张三', est_effort:8, progress:30 }),
-      create: vi.fn().mockResolvedValue({ id:99, title:'新需求', status:'backlog', priority:'P1', assignee:1, assignee_name:'张三', module:'', est_effort:4, progress:0, assigned_sprint:null }),
+      update: vi.fn().mockResolvedValue({ id:1, title:'登录', status:'in_progress', priority:'P0', assignee_name:'张三', est_effort:8, actual_effort:4, progress:30, planned_start:'2026-01-01', planned_end:'2026-01-15' }),
+      create: vi.fn().mockResolvedValue({ id:99, title:'新需求', status:'backlog', priority:'P1', assignee:1, assignee_name:'张三', module:'', est_effort:4, actual_effort:0, progress:0, planned_start:null, planned_end:null, assigned_sprint:null }),
     },
     members: { list: vi.fn().mockResolvedValue([
       { id:1, name:'张三', week_capacity:40, modules:'', active:true },
@@ -56,6 +56,10 @@ describe('Board', () => {
         assignee: null,
         module: '',
         est_effort: 0,
+        actual_effort: 0,
+        progress: 0,
+        planned_start: null,
+        planned_end: null,
         assigned_sprint: null
       })
     })
@@ -78,5 +82,11 @@ describe('Board', () => {
       expect(screen.getByDisplayValue('登录')).toBeInTheDocument()
     })
     expect(screen.getByText('编辑需求')).toBeInTheDocument()
+
+    // Check that the new fields appear in the edit form
+    expect(screen.getByText('已投入时间h')).toBeInTheDocument()
+    expect(screen.getByText('进度%')).toBeInTheDocument()
+    expect(screen.getByText('计划开始')).toBeInTheDocument()
+    expect(screen.getByText('计划结束')).toBeInTheDocument()
   })
 })

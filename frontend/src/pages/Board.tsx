@@ -44,6 +44,10 @@ export default function Board() {
       assignee: item.assignee,
       module: item.module,
       est_effort: String(item.est_effort),
+      actual_effort: String(item.actual_effort || 0),
+      progress: String(item.progress || 0),
+      planned_start: item.planned_start || '',
+      planned_end: item.planned_end || '',
       assigned_sprint: item.assigned_sprint
     })
     setShowForm(true)
@@ -55,7 +59,7 @@ export default function Board() {
     setEditingId(null)
     setMilestones([])
     setError('')
-    setForm({ title: '', status: 'backlog', priority: 'P1', assignee: null, module: '', est_effort: '', assigned_sprint: null })
+    setForm({ title: '', status: 'backlog', priority: 'P1', assignee: null, module: '', est_effort: '', actual_effort: '', progress: '', planned_start: '', planned_end: '', assigned_sprint: null })
     setMTitle(''); setMDate(''); setMNote('')
   }
 
@@ -66,6 +70,10 @@ export default function Board() {
     assignee: null as number | null,
     module: '',
     est_effort: '',
+    actual_effort: '',
+    progress: '',
+    planned_start: '',
+    planned_end: '',
     assigned_sprint: null as number | null
   })
 
@@ -80,6 +88,10 @@ export default function Board() {
         assignee: form.assignee,
         module: form.module || '',
         est_effort: Number(form.est_effort) || 0,
+        actual_effort: Number(form.actual_effort) || 0,
+        progress: Number(form.progress) || 0,
+        planned_start: form.planned_start || null,
+        planned_end: form.planned_end || null,
         assigned_sprint: form.assigned_sprint
       }
       if (editingId) {
@@ -164,6 +176,26 @@ export default function Board() {
                 className="w-full px-2 py-1 border rounded" placeholder="0" />
             </div>
             <div>
+              <label className="block text-sm font-medium mb-1">已投入时间h</label>
+              <input type="number" value={form.actual_effort} onChange={e => setForm({...form, actual_effort: e.target.value})}
+                className="w-full px-2 py-1 border rounded" placeholder="0" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">进度%</label>
+              <input type="number" min="0" max="100" value={form.progress} onChange={e => setForm({...form, progress: e.target.value})}
+                className="w-full px-2 py-1 border rounded" placeholder="0" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">计划开始</label>
+              <input type="date" value={form.planned_start} onChange={e => setForm({...form, planned_start: e.target.value})}
+                className="w-full px-2 py-1 border rounded" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">计划结束</label>
+              <input type="date" value={form.planned_end} onChange={e => setForm({...form, planned_end: e.target.value})}
+                className="w-full px-2 py-1 border rounded" />
+            </div>
+            <div>
               <label className="block text-sm font-medium mb-1">所属迭代</label>
               <select value={form.assigned_sprint || ''} onChange={e => setForm({...form, assigned_sprint: e.target.value ? Number(e.target.value) : null})}
                 className="w-full px-2 py-1 border rounded">
@@ -236,8 +268,9 @@ function Column({ status, items, onDrop, onEdit }:{ status:Status; items:Require
             <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
               <span className={`px-1 rounded ${PRIO_COLOR[r.priority]}`}>{r.priority}</span>
               <span>{r.assignee_name||'未分配'}</span>
-              <span>{r.est_effort}h</span>
+              <span>预计 {r.est_effort}h{r.actual_effort > 0 ? ` / 已投 ${r.actual_effort}h` : ''}</span>
               <span>{r.progress}%</span>
+              {(r.planned_start || r.planned_end) && <span>{r.planned_start || '?'}~{r.planned_end || '?'}</span>}
             </div>
           </div>
         ))}
