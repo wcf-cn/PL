@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
 import { api } from '../api'
 import type { Sprint, Requirement, Status } from '../types'
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 
 const DONE_STATUSES: Status[] = ['done', 'paused']
 
@@ -45,22 +47,38 @@ export default function Burndown() {
     : []
 
   return (
-    <div>
-      <select className="border p-2 mb-3" value={sid} onChange={e => setSid(Number(e.target.value))}>
-        {sprints.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-      </select>
-      <div className="mb-3">
-        总工时 {total}h / 剩余 {remaining}h
-      </div>
-      <LineChart width={600} height={300} data={[...idealData, ...actualData]}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="date" />
-        <YAxis />
-        <Tooltip />
-        <Legend />
-        <Line type="linear" dataKey="理想线" stroke="#8884d8" strokeDasharray="5 5" />
-        <Line type="monotone" dataKey="实际" stroke="#82ca9d" strokeWidth={2} />
-      </LineChart>
-    </div>
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle>燃尽图</CardTitle>
+          <Select value={sid?.toString() || ''} onValueChange={(v) => setSid(v ? Number(v) : '')}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="选择迭代" />
+            </SelectTrigger>
+            <SelectContent>
+              {sprints.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="mb-4">
+          <p className="text-sm text-muted-foreground">
+            总工时 {total}h / 剩余 {remaining}h
+          </p>
+        </div>
+        <div className="flex justify-center">
+          <LineChart width={600} height={300} data={[...idealData, ...actualData]}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            <Line type="linear" dataKey="理想线" stroke="#8884d8" strokeDasharray="5 5" />
+            <Line type="monotone" dataKey="实际" stroke="#82ca9d" strokeWidth={2} />
+          </LineChart>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

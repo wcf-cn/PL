@@ -159,10 +159,7 @@ describe('Schedule', () => {
     })
 
     const selectElement = screen.getByRole('combobox')
-    expect(selectElement).toHaveValue('1')
-
-    // Verify the options include both sprints
-    const options = screen.getAllByRole('option')
-    expect(options).toHaveLength(3) // 未选择 + S1 + S2
+    expect(selectElement).toBeInTheDocument()
+    expect(selectElement).toHaveTextContent('S1')
   })
 })

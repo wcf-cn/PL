@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import type { Sprint, Requirement, Status } from '../types'
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
+import { cn } from '../lib/utils'
 
 const STATUS_COLORS: Record<Status, string> = {
   backlog: 'bg-gray-300',
@@ -30,7 +33,7 @@ export default function Gantt() {
   }, [sid])
 
   const validReqs = reqs.filter(r => r.planned_start && r.planned_end)
-  if (!validReqs.length) return <div>该冲刺无计划日期的需求</div>
+  if (!validReqs.length) return <Card><CardContent className="p-6">该冲刺无计划日期的需求</CardContent></Card>
 
   // Parse dates consistently at midnight local time
   const parseDate = (d: string) => { const x = new Date(d); x.setHours(0,0,0,0); return x }
@@ -55,34 +58,49 @@ export default function Gantt() {
   })
 
   return (
-    <div>
-      <select className="border p-2 mb-3" value={sid} onChange={e => setSid(Number(e.target.value))}>
-        {sprints.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-      </select>
-      <div className="relative border-l border-r border-b border-gray-300 bg-white">
-        <div className="flex border-b border-gray-300 text-xs">
-          {dateAxis.map(d => (
-            <div key={d.toISOString()} className="flex-shrink-0" style={{ width: `${100 / (totalDays + 1)}%` }}>
-              {formatDate(d)}
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle>甘特图</CardTitle>
+          <Select value={sid?.toString() || ''} onValueChange={(v) => setSid(v ? Number(v) : '')}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="选择迭代" />
+            </SelectTrigger>
+            <SelectContent>
+              {sprints.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="relative border-l border-r border-b rounded-lg overflow-x-auto bg-muted/30">
+          <div className="flex border-b text-xs">
+            {dateAxis.map(d => (
+              <div key={d.toISOString()} className="flex-shrink-0 p-1" style={{ width: `${100 / (totalDays + 1)}%` }}>
+                {formatDate(d)}
+              </div>
+            ))}
+          </div>
+          {validReqs.map(r => (
+            <div key={r.id} className="relative h-8 border-b">
+              <div
+                className={cn(
+                  "absolute h-6 rounded px-2 text-xs flex items-center truncate",
+                  STATUS_COLORS[r.status]
+                )}
+                style={{
+                  left: `${position(r.planned_start!)}%`,
+                  width: `${width(r.planned_start!, r.planned_end!)}%`,
+                  top: '4px'
+                }}
+                title={r.title}
+              >
+                {r.title}
+              </div>
             </div>
           ))}
         </div>
-        {validReqs.map(r => (
-          <div key={r.id} className="relative h-8 border-b border-gray-200">
-            <div
-              className={`absolute h-6 ${STATUS_COLORS[r.status]} text-xs truncate px-1`}
-              style={{
-                left: `${position(r.planned_start!)}%`,
-                width: `${width(r.planned_start!, r.planned_end!)}%`,
-                top: '4px'
-              }}
-              title={r.title}
-            >
-              {r.title}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   )
 }

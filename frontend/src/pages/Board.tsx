@@ -1,7 +1,20 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { STATUS_LABEL, STATUS_ORDER, calcProgress, type Requirement, type Status, type Member, type Sprint, type Priority } from '../types'
-const PRIO_COLOR: Record<string,string> = { P0:'bg-red-100 text-red-700', P1:'bg-yellow-100 text-yellow-700', P2:'bg-gray-100 text-gray-700' }
+import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
+import { Label } from '../components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
+import { Badge } from '../components/ui/badge'
+import { Separator } from '../components/ui/separator'
+import { cn } from '../lib/utils'
+
+const PRIO_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  P0: 'destructive',
+  P1: 'default',
+  P2: 'secondary'
+}
 
 export default function Board() {
   const [items, setItems] = useState<Requirement[]>([])
@@ -126,113 +139,176 @@ export default function Board() {
   }
 
   return (
-    <div className="p-4">
-      <div className="mb-4">
-        <button onClick={() => setShowForm(!showForm)} className="px-3 py-1 bg-blue-500 text-white rounded">
-          + 新建需求
-        </button>
-      </div>
+    <div className="space-y-4">
+      <Button onClick={() => setShowForm(!showForm)}>+ 新建需求</Button>
 
       {showForm && (
-        <form onSubmit={createReq} className="mb-4 p-4 bg-gray-50 rounded">
-          <div className="mb-2 font-bold">{editingId ? '编辑需求' : '新建需求'}</div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">标题 *</label>
-              <input required value={form.title} onChange={e => setForm({...form, title: e.target.value})}
-                className="w-full px-2 py-1 border rounded" placeholder="请输入标题" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">状态</label>
-              <select value={form.status} onChange={e => setForm({...form, status: e.target.value as Status})}
-                className="w-full px-2 py-1 border rounded">
-                {STATUS_ORDER.map(s => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">优先级</label>
-              <select value={form.priority} onChange={e => setForm({...form, priority: e.target.value as Priority})}
-                className="w-full px-2 py-1 border rounded">
-                <option value="P0">P0</option>
-                <option value="P1">P1</option>
-                <option value="P2">P2</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">负责人</label>
-              <select value={form.assignee || ''} onChange={e => setForm({...form, assignee: e.target.value ? Number(e.target.value) : null})}
-                className="w-full px-2 py-1 border rounded">
-                <option value="">未分配</option>
-                {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">模块</label>
-              <input value={form.module} onChange={e => setForm({...form, module: e.target.value})}
-                className="w-full px-2 py-1 border rounded" placeholder="模块名称" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">预计工时h</label>
-              <input type="number" value={form.est_effort} onChange={e => setForm({...form, est_effort: e.target.value})}
-                className="w-full px-2 py-1 border rounded" placeholder="0" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">已投入时间h</label>
-              <input type="number" value={form.actual_effort} onChange={e => setForm({...form, actual_effort: e.target.value})}
-                className="w-full px-2 py-1 border rounded" placeholder="0" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">计划开始</label>
-              <input type="date" value={form.planned_start} onChange={e => setForm({...form, planned_start: e.target.value})}
-                className="w-full px-2 py-1 border rounded" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">计划结束</label>
-              <input type="date" value={form.planned_end} onChange={e => setForm({...form, planned_end: e.target.value})}
-                className="w-full px-2 py-1 border rounded" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">所属迭代</label>
-              <select value={form.assigned_sprint || ''} onChange={e => setForm({...form, assigned_sprint: e.target.value ? Number(e.target.value) : null})}
-                className="w-full px-2 py-1 border rounded">
-                <option value="">未分配</option>
-                {sprints.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {editingId && (
-            <div className="mt-4 pt-4 border-t">
-              <div className="font-bold mb-2">里程碑 ({milestones.length})</div>
-              <div className="space-y-2 mb-3">
-                {milestones.map(m => (
-                  <div key={m.id} className="text-sm p-2 bg-white rounded border">
-                    <div className="font-medium">{m.title}</div>
-                    <div className="text-gray-500">{m.date} {m.note && `- ${m.note}`}</div>
-                  </div>
-                ))}
-                {milestones.length === 0 && <div className="text-gray-400 text-sm">暂无里程碑</div>}
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <input value={mtitle} onChange={e=>setMTitle(e.target.value)} placeholder="里程碑标题" className="px-2 py-1 border rounded text-sm" />
-                <input type="date" value={mdate} onChange={e=>setMDate(e.target.value)} className="px-2 py-1 border rounded text-sm" />
-                <div className="flex gap-2">
-                  <input value={mnote} onChange={e=>setMNote(e.target.value)} placeholder="备注" className="flex-1 px-2 py-1 border rounded text-sm" />
-                  <button type="button" onClick={addMilestone} className="px-3 py-1 bg-green-500 text-white rounded text-sm">添加</button>
+        <Card>
+          <CardHeader>
+            <CardTitle>{editingId ? '编辑需求' : '新建需求'}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={createReq} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="title">标题 *</Label>
+                  <Input
+                    id="title"
+                    required
+                    value={form.title}
+                    onChange={e => setForm({...form, title: e.target.value})}
+                    placeholder="请输入标题"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="status">状态</Label>
+                  <Select value={form.status} onValueChange={(v) => setForm({...form, status: v as Status})}>
+                    <SelectTrigger id="status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUS_ORDER.map(s => <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="priority">优先级</Label>
+                  <Select value={form.priority} onValueChange={(v) => setForm({...form, priority: v as Priority})}>
+                    <SelectTrigger id="priority">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="P0">P0</SelectItem>
+                      <SelectItem value="P1">P1</SelectItem>
+                      <SelectItem value="P2">P2</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="assignee">负责人</Label>
+                  <Select value={form.assignee?.toString() || ''} onValueChange={(v) => setForm({...form, assignee: v ? Number(v) : null})}>
+                    <SelectTrigger id="assignee">
+                      <SelectValue placeholder="未分配" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">未分配</SelectItem>
+                      {members.map(m => <SelectItem key={m.id} value={m.id.toString()}>{m.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="module">模块</Label>
+                  <Input
+                    id="module"
+                    value={form.module}
+                    onChange={e => setForm({...form, module: e.target.value})}
+                    placeholder="模块名称"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="est_effort">预计工时h</Label>
+                  <Input
+                    id="est_effort"
+                    type="number"
+                    value={form.est_effort}
+                    onChange={e => setForm({...form, est_effort: e.target.value})}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="actual_effort">已投入时间h</Label>
+                  <Input
+                    id="actual_effort"
+                    type="number"
+                    value={form.actual_effort}
+                    onChange={e => setForm({...form, actual_effort: e.target.value})}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="planned_start">计划开始</Label>
+                  <Input
+                    id="planned_start"
+                    type="date"
+                    value={form.planned_start}
+                    onChange={e => setForm({...form, planned_start: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="planned_end">计划结束</Label>
+                  <Input
+                    id="planned_end"
+                    type="date"
+                    value={form.planned_end}
+                    onChange={e => setForm({...form, planned_end: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sprint">所属迭代</Label>
+                  <Select value={form.assigned_sprint?.toString() || ''} onValueChange={(v) => setForm({...form, assigned_sprint: v ? Number(v) : null})}>
+                    <SelectTrigger id="sprint">
+                      <SelectValue placeholder="未分配" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">未分配</SelectItem>
+                      {sprints.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-            </div>
-          )}
 
-          {error && <div className="mt-2 text-red-600 text-sm">{error}</div>}
-          <div className="mt-3 flex gap-2">
-            <button type="submit" className="px-4 py-1 bg-blue-500 text-white rounded">提交</button>
-            <button type="button" onClick={closeForm} className="px-4 py-1 bg-gray-300 rounded">取消</button>
-          </div>
-        </form>
+              {editingId && (
+                <>
+                  <Separator />
+                  <div className="space-y-3">
+                    <div className="font-medium">里程碑 ({milestones.length})</div>
+                    <div className="space-y-2">
+                      {milestones.map(m => (
+                        <Card key={m.id}>
+                          <CardContent className="p-3">
+                            <div className="font-medium">{m.title}</div>
+                            <div className="text-sm text-muted-foreground">{m.date} {m.note && `- ${m.note}`}</div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                      {milestones.length === 0 && <div className="text-sm text-muted-foreground">暂无里程碑</div>}
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Input
+                        value={mtitle}
+                        onChange={e=>setMTitle(e.target.value)}
+                        placeholder="里程碑标题"
+                      />
+                      <Input
+                        type="date"
+                        value={mdate}
+                        onChange={e=>setMDate(e.target.value)}
+                      />
+                      <div className="flex gap-2">
+                        <Input
+                          value={mnote}
+                          onChange={e=>setMNote(e.target.value)}
+                          placeholder="备注"
+                          className="flex-1"
+                        />
+                        <Button type="button" onClick={addMilestone} size="sm">添加</Button>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {error && <div className="text-destructive text-sm">{error}</div>}
+              <div className="flex gap-2">
+                <Button type="submit">提交</Button>
+                <Button type="button" variant="outline" onClick={closeForm}>取消</Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       )}
 
-      <div className="flex gap-3 overflow-x-auto">
+      <div className="flex gap-3 overflow-x-auto pb-4">
         {STATUS_ORDER.map(st => (
           <Column key={st} status={st} items={items.filter(r => r.status === st)} onDrop={onDrop} onEdit={startEdit} />
         ))}
@@ -248,29 +324,50 @@ function Column({ status, items, onDrop, onEdit }:{ status:Status; items:Require
       onDragOver={e=>{e.preventDefault();setOver(true)}}
       onDragLeave={()=>setOver(false)}
       onDrop={(e:any)=>{setOver(false); const id=Number((e as any).dataTransfer.getData('id')); if (id) onDrop(status, id)}}
-      className={`w-64 shrink-0 p-2 rounded bg-gray-50 ${over?'ring-2 ring-blue-400':''}`}
+      className={cn(
+        "w-64 shrink-0 p-4 rounded-lg bg-muted/50 min-h-[400px]",
+        over && 'ring-2 ring-primary'
+      )}
     >
-      <div className="flex justify-between mb-2">
-        <b>{STATUS_LABEL[status]}</b><span className="text-gray-400">{items.length}</span>
+      <div className="flex justify-between items-center mb-3">
+        <h3 className="font-semibold">{STATUS_LABEL[status]}</h3>
+        <Badge variant="secondary">{items.length}</Badge>
       </div>
       <div
         onDrop={e=>{e.stopPropagation(); onDrop(status, Number((e as any).dataTransfer.getData('id')))}}
-        className="min-h-[40px] space-y-2"
+        className="min-h-[300px] space-y-2"
       >
         {items.map(r => (
-          <div key={r.id} draggable onDragStart={e=>(e as any).dataTransfer.setData('id', String(r.id))} onDoubleClick={()=>onEdit(r)}
-            className="p-2 bg-white rounded shadow cursor-move">
-            <div className="font-medium">{r.title}</div>
-            <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
-              <span className={`px-1 rounded ${PRIO_COLOR[r.priority]}`}>{r.priority}</span>
-              <span>{r.assignee_name||'未分配'}</span>
-              <span>预计 {r.est_effort}h{r.actual_effort > 0 ? ` / 已投 ${r.actual_effort}h` : ''}</span>
-              <span>{calcProgress(r.est_effort, r.actual_effort)}%</span>
-              {(r.planned_start || r.planned_end) && <span>{r.planned_start || '?'}~{r.planned_end || '?'}</span>}
-            </div>
-          </div>
+          <RequirementCard key={r.id} requirement={r} onEdit={onEdit} />
         ))}
       </div>
     </div>
+  )
+}
+
+function RequirementCard({ requirement, onEdit }: { requirement: Requirement; onEdit: (r: Requirement) => void }) {
+  return (
+    <Card
+      draggable
+      onDragStart={e=>(e as any).dataTransfer.setData('id', String(requirement.id))}
+      onDoubleClick={()=>onEdit(requirement)}
+      className="cursor-move hover:shadow-md transition-shadow"
+    >
+      <CardContent className="p-3">
+        <div className="font-medium mb-2">{requirement.title}</div>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <Badge variant={PRIO_VARIANT[requirement.priority]} className="text-xs">
+            {requirement.priority}
+          </Badge>
+          <span>{requirement.assignee_name||'未分配'}</span>
+          <span>预计 {requirement.est_effort}h</span>
+          {requirement.actual_effort > 0 && <span>/ 已投 {requirement.actual_effort}h</span>}
+          <span>{calcProgress(requirement.est_effort, requirement.actual_effort)}%</span>
+          {(requirement.planned_start || requirement.planned_end) && (
+            <span>{requirement.planned_start || '?'}~{requirement.planned_end || '?'}</span>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   )
 }
