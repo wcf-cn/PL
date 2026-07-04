@@ -8,7 +8,7 @@ function App() {
 
   return (
     <>
-      <section id="center">
+      <section id="center" className="text-red-500 bg-blue-200">
         <div className="hero">
           <img src={heroImg} className="base" width="170" height="179" alt="" />
           <img src={reactLogo} className="framework" alt="React logo" />
