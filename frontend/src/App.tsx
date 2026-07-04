@@ -4,6 +4,7 @@ import { api } from './api'
 import Login from './pages/Login'
 import Board from './pages/Board'
 import Capacity from './pages/Capacity'
+import Schedule from './pages/Schedule'
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null)
   useEffect(() => { api.me().then(() => setAuthed(true)).catch(() => setAuthed(false)) }, [])
@@ -18,6 +19,7 @@ export default function App() {
           </> : <>
             <Route path="/board" element={<Board />} />
             <Route path="/capacity" element={<Capacity />} />
+            <Route path="/schedule" element={<Schedule />} />
             <Route path="*" element={<Navigate to="/board" />} />
           </>}
         </Routes>
@@ -30,6 +32,7 @@ function Nav({authed, onLogout}:{authed:boolean; onLogout:()=>void}) {
   return <nav className="flex gap-4 mb-4">
     <a href="#/board" className="text-blue-600">看板</a>
     <a href="#/capacity" className="text-blue-600">产能</a>
+    <a href="#/schedule" className="text-blue-600">排期</a>
     <button onClick={onLogout} className="ml-auto text-gray-500">登出</button>
   </nav>
 }

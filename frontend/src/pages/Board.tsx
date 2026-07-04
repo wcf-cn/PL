@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
-import { STATUS_LABEL, STATUS_ORDER, type Requirement, type Status, type Member, type Sprint, type Priority } from '../types'
+import { STATUS_LABEL, STATUS_ORDER, STATUS_PROGRESS, type Requirement, type Status, type Member, type Sprint, type Priority } from '../types'
 const PRIO_COLOR: Record<string,string> = { P0:'bg-red-100 text-red-700', P1:'bg-yellow-100 text-yellow-700', P2:'bg-gray-100 text-gray-700' }
 
 export default function Board() {
@@ -22,8 +22,8 @@ export default function Board() {
   }, [])
   const onDrop = async (status: Status, id: number) => {
     const r = items.find(x => x.id === id); if (!r || r.status === status) return
-    setItems(prev => prev.map(x => x.id === id ? { ...x, status } : x))
-    await api.requirements.update(id, { status })
+    setItems(prev => prev.map(x => x.id === id ? { ...x, status, progress: STATUS_PROGRESS[status] } : x))
+    await api.requirements.update(id, { status, progress: STATUS_PROGRESS[status] })
   }
 
   const loadMilestones = async (reqId: number) => {
@@ -45,7 +45,6 @@ export default function Board() {
       module: item.module,
       est_effort: String(item.est_effort),
       actual_effort: String(item.actual_effort || 0),
-      progress: String(item.progress || 0),
       planned_start: item.planned_start || '',
       planned_end: item.planned_end || '',
       assigned_sprint: item.assigned_sprint
@@ -59,7 +58,7 @@ export default function Board() {
     setEditingId(null)
     setMilestones([])
     setError('')
-    setForm({ title: '', status: 'backlog', priority: 'P1', assignee: null, module: '', est_effort: '', actual_effort: '', progress: '', planned_start: '', planned_end: '', assigned_sprint: null })
+    setForm({ title: '', status: 'backlog', priority: 'P1', assignee: null, module: '', est_effort: '', actual_effort: '', planned_start: '', planned_end: '', assigned_sprint: null })
     setMTitle(''); setMDate(''); setMNote('')
   }
 
@@ -71,7 +70,6 @@ export default function Board() {
     module: '',
     est_effort: '',
     actual_effort: '',
-    progress: '',
     planned_start: '',
     planned_end: '',
     assigned_sprint: null as number | null
@@ -89,7 +87,7 @@ export default function Board() {
         module: form.module || '',
         est_effort: Number(form.est_effort) || 0,
         actual_effort: Number(form.actual_effort) || 0,
-        progress: Number(form.progress) || 0,
+        progress: STATUS_PROGRESS[form.status],
         planned_start: form.planned_start || null,
         planned_end: form.planned_end || null,
         assigned_sprint: form.assigned_sprint
@@ -181,11 +179,6 @@ export default function Board() {
                 className="w-full px-2 py-1 border rounded" placeholder="0" />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">进度%</label>
-              <input type="number" min="0" max="100" value={form.progress} onChange={e => setForm({...form, progress: e.target.value})}
-                className="w-full px-2 py-1 border rounded" placeholder="0" />
-            </div>
-            <div>
               <label className="block text-sm font-medium mb-1">计划开始</label>
               <input type="date" value={form.planned_start} onChange={e => setForm({...form, planned_start: e.target.value})}
                 className="w-full px-2 py-1 border rounded" />
@@ -269,7 +262,7 @@ function Column({ status, items, onDrop, onEdit }:{ status:Status; items:Require
               <span className={`px-1 rounded ${PRIO_COLOR[r.priority]}`}>{r.priority}</span>
               <span>{r.assignee_name||'未分配'}</span>
               <span>预计 {r.est_effort}h{r.actual_effort > 0 ? ` / 已投 ${r.actual_effort}h` : ''}</span>
-              <span>{r.progress}%</span>
+              <span>{STATUS_PROGRESS[r.status]}%</span>
               {(r.planned_start || r.planned_end) && <span>{r.planned_start || '?'}~{r.planned_end || '?'}</span>}
             </div>
           </div>

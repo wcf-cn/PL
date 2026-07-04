@@ -64,3 +64,13 @@ export const STATUS_LABEL: Record<Status,string> = {
 }
 
 export const STATUS_ORDER: Status[] = ['backlog','scheduled','in_progress','testing','done','blocked','paused']
+
+export const STATUS_PROGRESS: Record<Status, number> = {
+  backlog: 0,
+  scheduled: 10,
+  in_progress: 50,
+  testing: 80,
+  done: 100,
+  blocked: 50,
+  paused: 50
+}
