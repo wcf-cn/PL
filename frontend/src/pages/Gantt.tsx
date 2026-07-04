@@ -22,7 +22,6 @@ const DAY_W = 44
 // Collapse constants
 const HEAD = 7
 const TAIL = 7
-const COLLAPSE_W = 120
 
 export default function Gantt() {
   const [sprints, setSprints] = useState<Sprint[]>([])
@@ -67,61 +66,6 @@ export default function Gantt() {
 
   // Display coordinate functions for collapsed mode
   const isCollapsed = !axisExpanded && totalDays > 21
-
-  const displayLeft = (startStr: string) => {
-    const startDay = position(startStr)
-    if (!isCollapsed) return startDay * DAY_W
-
-    // In collapsed mode
-    if (startDay <= HEAD) {
-      // In head region: normal positioning
-      return startDay * DAY_W
-    } else if (startDay >= totalDays - TAIL) {
-      // In tail region: offset by head + collapse
-      return HEAD * DAY_W + COLLAPSE_W + (startDay - (totalDays - TAIL)) * DAY_W
-    } else {
-      // In middle region: position at left edge of collapse column
-      return HEAD * DAY_W
-    }
-  }
-
-  const displayWidth = (startStr: string, endStr: string) => {
-    const startDay = position(startStr)
-    const endDay = position(endStr)
-    const duration = endDay - startDay
-
-    if (!isCollapsed) return duration * DAY_W
-
-    // In collapsed mode
-    const endInHead = endDay <= HEAD
-    const startInTail = startDay >= totalDays - TAIL
-    const spansMiddle = startDay < HEAD && endDay > totalDays - TAIL
-    const inMiddleOnly = startDay >= HEAD && endDay <= totalDays - TAIL
-
-    if (endInHead) {
-      // Entirely in head: normal width
-      return duration * DAY_W
-    } else if (startInTail) {
-      // Entirely in tail: normal width
-      return duration * DAY_W
-    } else if (spansMiddle) {
-      // Spans entire middle: show as thin bar in collapse column
-      return COLLAPSE_W
-    } else if (inMiddleOnly) {
-      // Fully inside middle: show as thin bar in collapse column
-      return COLLAPSE_W
-    } else {
-      // Partially spans middle: split logic handled in render
-      // Return width for head part or tail part
-      if (startDay < HEAD) {
-        // Head part: from start to collapse column
-        return (HEAD - startDay) * DAY_W
-      } else {
-        // Tail part: from collapse column to end
-        return (endDay - (totalDays - TAIL)) * DAY_W
-      }
-    }
-  }
 
   const formatDate = (date: Date) => `${date.getMonth() + 1}/${date.getDate()}`
 
@@ -227,15 +171,15 @@ export default function Gantt() {
 
         <div ref={timelineRef} className="relative border-l border-r border-b rounded-lg overflow-x-auto bg-muted/30">
           <div
-            className="border-b"
+            className="border-b w-full"
             style={{
-              width: `${isCollapsed ? HEAD * DAY_W + COLLAPSE_W + TAIL * DAY_W : totalDays * DAY_W}px`,
               backgroundImage: !isCollapsed
                 ? `repeating-linear-gradient(to right, var(--border) 0, var(--border) 1px, transparent 1px, transparent ${DAY_W}px)`
-                : undefined
+                : undefined,
+              ...(!isCollapsed ? { width: `${totalDays * DAY_W}px` } : {})
             }}
           >
-            <div className="flex border-b text-xs w-full relative">
+            <div className={cn("flex border-b text-xs relative", isCollapsed ? "w-full" : "")}>
               {totalDays <= 21 || axisExpanded ? (
                 <>
                   {dateAxis.map(d => (
@@ -268,10 +212,9 @@ export default function Gantt() {
                       {formatDate(d)}
                     </div>
                   ))}
-                  {/* Collapsible middle section */}
+                  {/* Collapsible middle section - flex-1 to fill remaining space */}
                   <div
-                    className="flex-shrink-0 px-1 py-1 bg-muted/50 text-muted-foreground italic text-center text-[10px] cursor-pointer hover:bg-muted/70 border-r"
-                    style={{ width: `${COLLAPSE_W}px` }}
+                    className="flex-1 px-1 py-1 bg-muted/50 text-muted-foreground italic text-center text-[10px] cursor-pointer hover:bg-muted/70 border-r"
                     onClick={() => setAxisExpanded(true)}
                   >
                     …{totalDays - HEAD - TAIL} 天…
@@ -322,8 +265,8 @@ export default function Gantt() {
                               "cursor-default"
                             )}
                             style={{
-                              left: `${displayLeft(displayStart)}px`,
-                              width: `${(endInHead || partiallySpansHead) ? displayWidth(displayStart, displayEnd) : HEAD * DAY_W - displayLeft(displayStart)}px`,
+                              left: `${startDay * DAY_W}px`,
+                              width: `${(endInHead || partiallySpansHead) ? (endDay - startDay) * DAY_W : (HEAD - startDay) * DAY_W}px`,
                               top: '4px'
                             }}
                             title={`${r.title} (${STATUS_LABEL[r.status]})`}
@@ -335,21 +278,21 @@ export default function Gantt() {
                         {(inMiddleOnly || spansMiddle) && (
                           <div
                             className={cn(
-                              "absolute h-6 rounded px-2 text-xs flex items-center truncate",
+                              "absolute h-6 rounded px-2 text-xs flex items-center justify-center truncate",
                               STATUS_COLORS[r.status],
                               "cursor-default"
                             )}
                             style={{
                               left: `${HEAD * DAY_W}px`,
-                              width: `${COLLAPSE_W}px`,
+                              right: `${TAIL * DAY_W}px`,
                               top: '4px'
                             }}
                             title={`${r.title} (${STATUS_LABEL[r.status]}) - 跨${endDay - startDay}天`}
                           >
-                            {inMiddleOnly ? r.title : `跨${endDay - startDay}天`}
+                            {inMiddleOnly ? r.title : `↔`}
                           </div>
                         )}
-                        {/* Tail segment */}
+                        {/* Tail segment - anchored from right */}
                         {(startInTail || partiallySpansTail || spansMiddle) && (
                           <div
                             className={cn(
@@ -358,8 +301,8 @@ export default function Gantt() {
                               "cursor-default"
                             )}
                             style={{
-                              left: `${startInTail ? displayLeft(displayStart) : HEAD * DAY_W + COLLAPSE_W}px`,
-                              width: `${(startInTail || partiallySpansTail) ? displayWidth(displayStart, displayEnd) : displayLeft(displayEnd) - (HEAD * DAY_W + COLLAPSE_W)}px`,
+                              right: `${(totalDays - endDay) * DAY_W}px`,
+                              width: `${(startInTail || partiallySpansTail) ? (endDay - startDay) * DAY_W : (endDay - (totalDays - TAIL)) * DAY_W}px`,
                               top: '4px'
                             }}
                             title={`${r.title} (${STATUS_LABEL[r.status]})`}
