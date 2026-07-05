@@ -80,60 +80,46 @@ export default function Gantt() {
   const buildSegments = (): Segment[] => {
     const segments: Segment[] = []
     let i = 0
-
     while (i <= totalDays) {
-      // Find next occupied day or end
-      while (i <= totalDays && !occupiedDays.has(i)) {
-        i++
-      }
-
-      // Find the next gap (consecutive empty days)
-      let gapStart = i
-      while (i <= totalDays && occupiedDays.has(i)) {
-        i++
-      }
-      let gapEnd = i - 1
-
-      // Find the actual empty gap
-      let emptyStart = i
-      while (i <= totalDays && !occupiedDays.has(i)) {
-        i++
-      }
-      let emptyEnd = i - 1
-
-      // Add expanded segment (occupied + nearby within threshold)
-      if (gapStart <= gapEnd) {
-        const expandStart = Math.max(0, gapStart - GAP_THRESHOLD)
-        const expandEnd = Math.min(totalDays, emptyEnd + GAP_THRESHOLD)
-        segments.push({
-          type: 'expanded',
-          startDay: expandStart,
-          endDay: expandEnd
-        })
-      }
-
-      // Add collapsed gap segment if long enough
-      const emptyLength = emptyEnd - emptyStart + 1
-      if (emptyLength > GAP_THRESHOLD) {
-        segments.push({
-          type: 'gap',
-          startDay: emptyStart,
-          endDay: emptyEnd,
-          gapId: `gap-${emptyStart}-${emptyEnd}`
-        })
+      if (occupiedDays.has(i)) {
+        // occupied run → expanded
+        const start = i
+        while (i <= totalDays && occupiedDays.has(i)) i++
+        segments.push({ type: 'expanded', startDay: start, endDay: i - 1 })
+      } else {
+        // empty run
+        const start = i
+        while (i <= totalDays && !occupiedDays.has(i)) i++
+        const end = i - 1
+        const len = end - start + 1
+        if (len > GAP_THRESHOLD) {
+          segments.push({ type: 'gap', startDay: start, endDay: end, gapId: `gap-${start}-${end}` })
+        } else {
+          // small gap stays expanded
+          segments.push({ type: 'expanded', startDay: start, endDay: end })
+        }
       }
     }
-
-    return segments
+    // merge adjacent expanded segments
+    const merged: Segment[] = []
+    segments.forEach(seg => {
+      const last = merged[merged.length - 1]
+      if (last && last.type === 'expanded' && seg.type === 'expanded' && seg.startDay === last.endDay + 1) {
+        last.endDay = seg.endDay
+      } else {
+        merged.push({ ...seg })
+      }
+    })
+    return merged
   }
 
   const buildSegmentsWithExpansion = (): Segment[] => {
-    const rawSegments = buildSegments()
-    return rawSegments.filter(seg => {
-      if (seg.type === 'gap' && seg.gapId && expandedGaps.has(seg.gapId)) {
-        return false  // Remove collapsed gaps that are expanded
+    return buildSegments().map(seg => {
+      // a gap that's individually expanded OR globally expanded → render as expanded day-cells
+      if (seg.type === 'gap' && (axisExpanded || (seg.gapId && expandedGaps.has(seg.gapId)))) {
+        return { ...seg, type: 'expanded' as const }
       }
-      return true
+      return seg
     })
   }
 
