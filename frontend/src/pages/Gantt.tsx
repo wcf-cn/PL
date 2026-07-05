@@ -19,9 +19,9 @@ const STATUS_COLORS: Record<Status, string> = {
 // Fixed day width for consistent timeline rendering
 const DAY_W = 44
 
-// Collapse constants
-const HEAD = 7
-const TAIL = 7
+// Gap-based collapse threshold
+const GAP_THRESHOLD = 4
+const COLLAPSE_MARKER_WIDTH = 96
 
 export default function Gantt() {
   const [sprints, setSprints] = useState<Sprint[]>([])
@@ -29,6 +29,7 @@ export default function Gantt() {
   const [reqs, setReqs] = useState<Requirement[]>([])
   const [dragging, setDragging] = useState<{id: number, origStart: string, origEnd: string, newStart: string, newEnd: string} | null>(null)
   const [axisExpanded, setAxisExpanded] = useState(false)
+  const [expandedGaps, setExpandedGaps] = useState<Set<string>>(new Set())
   const timelineRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -58,14 +59,110 @@ export default function Gantt() {
     return Math.floor((date.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24))
   }
 
-  const width = (start: string, end: string) => {
-    const startDays = position(start)
-    const endDays = position(end)
-    return (endDays - startDays) * DAY_W
+  // Compute occupied days (union of all task intervals)
+  const occupiedDays = new Set<number>()
+  validReqs.forEach(req => {
+    const startDay = position(req.planned_start!)
+    const endDay = position(req.planned_end!)
+    for (let day = startDay; day <= endDay; day++) {
+      occupiedDays.add(day)
+    }
+  })
+
+  // Build segments: expanded runs and collapsible gaps
+  interface Segment {
+    type: 'expanded' | 'gap'
+    startDay: number
+    endDay: number
+    gapId?: string  // for gap segments
   }
 
-  // Display coordinate functions for collapsed mode
-  const isCollapsed = !axisExpanded && totalDays > 21
+  const buildSegments = (): Segment[] => {
+    const segments: Segment[] = []
+    let i = 0
+
+    while (i <= totalDays) {
+      // Find next occupied day or end
+      while (i <= totalDays && !occupiedDays.has(i)) {
+        i++
+      }
+
+      // Find the next gap (consecutive empty days)
+      let gapStart = i
+      while (i <= totalDays && occupiedDays.has(i)) {
+        i++
+      }
+      let gapEnd = i - 1
+
+      // Find the actual empty gap
+      let emptyStart = i
+      while (i <= totalDays && !occupiedDays.has(i)) {
+        i++
+      }
+      let emptyEnd = i - 1
+
+      // Add expanded segment (occupied + nearby within threshold)
+      if (gapStart <= gapEnd) {
+        const expandStart = Math.max(0, gapStart - GAP_THRESHOLD)
+        const expandEnd = Math.min(totalDays, emptyEnd + GAP_THRESHOLD)
+        segments.push({
+          type: 'expanded',
+          startDay: expandStart,
+          endDay: expandEnd
+        })
+      }
+
+      // Add collapsed gap segment if long enough
+      const emptyLength = emptyEnd - emptyStart + 1
+      if (emptyLength > GAP_THRESHOLD) {
+        segments.push({
+          type: 'gap',
+          startDay: emptyStart,
+          endDay: emptyEnd,
+          gapId: `gap-${emptyStart}-${emptyEnd}`
+        })
+      }
+    }
+
+    return segments
+  }
+
+  const buildSegmentsWithExpansion = (): Segment[] => {
+    const rawSegments = buildSegments()
+    return rawSegments.filter(seg => {
+      if (seg.type === 'gap' && seg.gapId && expandedGaps.has(seg.gapId)) {
+        return false  // Remove collapsed gaps that are expanded
+      }
+      return true
+    })
+  }
+
+  const segments = buildSegmentsWithExpansion()
+
+  // Build dayToX mapping and total width
+  let cumulativeX = 0
+  const dayToXMap = new Map<number, number>()
+
+  segments.forEach(seg => {
+    if (seg.type === 'expanded') {
+      for (let day = seg.startDay; day <= seg.endDay; day++) {
+        dayToXMap.set(day, cumulativeX)
+        cumulativeX += DAY_W
+      }
+    } else {
+      // Collapsed gap: all days in gap map to same X (marker center)
+      for (let day = seg.startDay; day <= seg.endDay; day++) {
+        dayToXMap.set(day, cumulativeX + COLLAPSE_MARKER_WIDTH / 2)
+      }
+      cumulativeX += COLLAPSE_MARKER_WIDTH
+    }
+  })
+
+  const dayToX = (day: number): number => {
+    return dayToXMap.get(day) ?? 0
+  }
+
+  const timelineWidth = cumulativeX
 
   const formatDate = (date: Date) => `${date.getMonth() + 1}/${date.getDate()}`
 
@@ -76,12 +173,6 @@ export default function Gantt() {
     d.setDate(d.getDate() + days)
     return d.toISOString().split('T')[0]
   }
-
-  const dateAxis = Array.from({ length: totalDays + 1 }, (_, i) => {
-    const d = new Date(minDate)
-    d.setDate(d.getDate() + i)
-    return d
-  })
 
   // Group requirements by assignee
   const groupedByAssignee = validReqs.reduce((acc, req) => {
@@ -171,65 +262,65 @@ export default function Gantt() {
 
         <div ref={timelineRef} className="relative border-l border-r border-b rounded-lg overflow-x-auto bg-muted/30">
           <div
-            className="border-b w-full"
+            className="border-b"
             style={{
-              backgroundImage: !isCollapsed
-                ? `repeating-linear-gradient(to right, var(--border) 0, var(--border) 1px, transparent 1px, transparent ${DAY_W}px)`
-                : undefined,
-              ...(!isCollapsed ? { width: `${totalDays * DAY_W}px` } : {})
+              width: `${timelineWidth}px`,
+              backgroundImage: `repeating-linear-gradient(to right, var(--border) 0, var(--border) 1px, transparent 1px, transparent ${DAY_W}px)`
             }}
           >
-            <div className={cn("flex border-b text-xs relative", isCollapsed ? "w-full" : "")}>
-              {totalDays <= 21 || axisExpanded ? (
-                <>
-                  {dateAxis.map(d => (
+            <div className="flex border-b text-xs relative">
+              {segments.map(seg => {
+                if (seg.type === 'expanded') {
+                  return Array.from({ length: seg.endDay - seg.startDay + 1 }, (_, i) => {
+                    const day = seg.startDay + i
+                    const d = new Date(minDate)
+                    d.setDate(d.getDate() + day)
+                    return (
+                      <div
+                        key={day}
+                        className="flex-shrink-0 px-1 py-1 text-muted-foreground text-[10px] text-center border-r"
+                        style={{ width: `${DAY_W}px` }}
+                      >
+                        {formatDate(d)}
+                      </div>
+                    )
+                  })
+                } else {
+                  return (
                     <div
-                      key={d.toISOString()}
-                      className="flex-shrink-0 px-1 py-1 text-muted-foreground text-[10px] text-center"
-                      style={{ width: `${DAY_W}px` }}
+                      key={seg.gapId}
+                      className="flex-shrink-0 px-1 py-1 bg-muted/50 text-muted-foreground italic text-center text-[10px] cursor-pointer hover:bg-muted/70 border-r"
+                      style={{ width: `${COLLAPSE_MARKER_WIDTH}px` }}
+                      onClick={() => {
+                        if (seg.gapId) {
+                          setExpandedGaps(prev => new Set([...prev, seg.gapId!]))
+                        }
+                      }}
+                      title={`展开 ${seg.endDay - seg.startDay + 1} 天`}
                     >
-                      {formatDate(d)}
+                      …{seg.endDay - seg.startDay + 1} 天…
                     </div>
-                  ))}
-                  {totalDays > 21 && (
-                    <button
-                      onClick={() => setAxisExpanded(false)}
-                      className="absolute right-2 top-1 text-[10px] text-muted-foreground hover:text-foreground cursor-pointer bg-background border rounded px-1"
-                    >
-                      收起
-                    </button>
-                  )}
-                </>
-              ) : (
-                <>
-                  {/* Head 7 days */}
-                  {dateAxis.slice(0, HEAD).map(d => (
-                    <div
-                      key={d.toISOString()}
-                      className="flex-shrink-0 px-1 py-1 text-muted-foreground text-[10px] text-center border-r"
-                      style={{ width: `${DAY_W}px` }}
-                    >
-                      {formatDate(d)}
-                    </div>
-                  ))}
-                  {/* Collapsible middle section - flex-1 to fill remaining space */}
-                  <div
-                    className="flex-1 px-1 py-1 bg-muted/50 text-muted-foreground italic text-center text-[10px] cursor-pointer hover:bg-muted/70 border-r"
-                    onClick={() => setAxisExpanded(true)}
-                  >
-                    …{totalDays - HEAD - TAIL} 天…
-                  </div>
-                  {/* Tail 7 days */}
-                  {dateAxis.slice(-TAIL).map(d => (
-                    <div
-                      key={d.toISOString()}
-                      className="flex-shrink-0 px-1 py-1 text-muted-foreground text-[10px] text-center border-r"
-                      style={{ width: `${DAY_W}px` }}
-                    >
-                      {formatDate(d)}
-                    </div>
-                  ))}
-                </>
+                  )
+                }
+              })}
+              {segments.some(s => s.type === 'gap') && !axisExpanded && (
+                <button
+                  onClick={() => setAxisExpanded(true)}
+                  className="absolute right-2 top-1 text-[10px] text-muted-foreground hover:text-foreground cursor-pointer bg-background border rounded px-1"
+                >
+                  全部展开
+                </button>
+              )}
+              {axisExpanded && (
+                <button
+                  onClick={() => {
+                    setAxisExpanded(false)
+                    setExpandedGaps(new Set())
+                  }}
+                  className="absolute right-2 top-1 text-[10px] text-muted-foreground hover:text-foreground cursor-pointer bg-background border rounded px-1"
+                >
+                  收起空段
+                </button>
               )}
             </div>
             {assigneeNames.map(assigneeName => (
@@ -244,86 +335,25 @@ export default function Gantt() {
                   const displayEnd = isDragging ? dragging.newEnd : r.planned_end!
                   const startDay = position(displayStart)
                   const endDay = position(displayEnd)
-                  // ponytail: clean 3-region rule - render segment for EVERY region touched
 
                   return (
-                  <div key={r.id} className="relative h-8 border-b w-full">
-                    {/* Render bar segments based on collapse state */}
-                    {isCollapsed ? (
-                      <>
-                        {/* Head segment (startDay < HEAD) */}
-                        {startDay < HEAD && (
-                          <div
-                            className={cn(
-                              "absolute h-6 rounded-l px-2 text-xs flex items-center truncate",
-                              STATUS_COLORS[r.status],
-                              "cursor-default"
-                            )}
-                            style={{
-                              left: `${startDay * DAY_W}px`,
-                              width: `${(Math.min(endDay, HEAD) - startDay) * DAY_W}px`,
-                              top: '4px'
-                            }}
-                            title={`${r.title} (${STATUS_LABEL[r.status]})`}
-                          >
-                            {r.title}
-                          </div>
-                        )}
-                        {/* Middle/collapse segment (touches the middle) */}
-                        {startDay < totalDays - TAIL && endDay > HEAD && (
-                          <div
-                            className={cn(
-                              "absolute h-6 rounded px-2 text-xs flex items-center justify-center truncate",
-                              STATUS_COLORS[r.status],
-                              "cursor-default"
-                            )}
-                            style={{
-                              left: `${HEAD * DAY_W}px`,
-                              right: `${TAIL * DAY_W}px`,
-                              top: '4px'
-                            }}
-                            title={`${r.title} (${STATUS_LABEL[r.status]}) - 跨${endDay - startDay}天`}
-                          >
-                            {startDay >= HEAD && endDay <= totalDays - TAIL ? r.title : `↔`}
-                          </div>
-                        )}
-                        {/* Tail segment (endDay > totalDays - TAIL) */}
-                        {endDay > totalDays - TAIL && (
-                          <div
-                            className={cn(
-                              "absolute h-6 rounded-r px-2 text-xs flex items-center truncate",
-                              STATUS_COLORS[r.status],
-                              "cursor-default"
-                            )}
-                            style={{
-                              right: `${(totalDays - endDay) * DAY_W}px`,
-                              width: `${(endDay - Math.max(startDay, totalDays - TAIL)) * DAY_W}px`,
-                              top: '4px'
-                            }}
-                            title={`${r.title} (${STATUS_LABEL[r.status]})`}
-                          >
-                            {startDay >= totalDays - TAIL ? r.title : ''}
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <div
-                        className={cn(
-                          "absolute h-6 rounded px-2 text-xs flex items-center truncate",
-                          STATUS_COLORS[r.status],
-                          isDragging ? "cursor-grabbing" : "cursor-grab"
-                        )}
-                        style={{
-                          left: `${position(displayStart) * DAY_W}px`,
-                          width: `${width(displayStart, displayEnd)}px`,
-                          top: '4px'
-                        }}
-                        title={`${r.title} (${STATUS_LABEL[r.status]})`}
-                        onMouseDown={(e) => handleMouseDown(e, r)}
-                      >
-                        {r.title}
-                      </div>
-                    )}
+                  <div key={r.id} className="relative h-8 border-b">
+                    <div
+                      className={cn(
+                        "absolute h-6 rounded px-2 text-xs flex items-center truncate",
+                        STATUS_COLORS[r.status],
+                        isDragging ? "cursor-grabbing" : "cursor-grab"
+                      )}
+                      style={{
+                        left: `${dayToX(startDay)}px`,
+                        width: `${dayToX(endDay) - dayToX(startDay) + DAY_W}px`,
+                        top: '4px'
+                      }}
+                      title={`${r.title} (${STATUS_LABEL[r.status]})`}
+                      onMouseDown={(e) => handleMouseDown(e, r)}
+                    >
+                      {r.title}
+                    </div>
                   </div>
                 )})}
               </div>
