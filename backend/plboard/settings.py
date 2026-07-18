@@ -1,5 +1,10 @@
 from pathlib import Path
+import os
+from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
+GLM_API_KEY = os.environ.get("GLM_API_KEY", "")
+GLM_MODEL = os.environ.get("GLM_MODEL", "glm-5.1")
 FRONTEND_DIST = BASE_DIR.parent / 'frontend' / 'dist'
 SECRET_KEY = 'dev-insecure-change-me'  # 个人自用本地,生产再换
 DEBUG = True
