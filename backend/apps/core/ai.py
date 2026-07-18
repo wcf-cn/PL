@@ -67,4 +67,6 @@ def build_system_prompt(members, sprints, modules):
 - create_requirement: {{"type":"create_requirement","params":{{"title":"xxx","assignee":"张三","assigned_sprint":"S1"}},"description":"..."}}
 - delete_requirement: {{"type":"delete_requirement","match":{{"title":"xxx"}},"description":"..."}}
 - update_member: {{"type":"update_member","match":{{"name":"张三"}},"fields":{{"week_capacity":35}},"description":"..."}}
+- create_member: {{"type":"create_member","params":{{"name":"李四","week_capacity":40,"modules":"前端"}},"description":"添加成员李四"}}
+- create_sprint: {{"type":"create_sprint","params":{{"name":"2026-W28","start_date":"2026-07-20","end_date":"2026-08-03"}},"description":"创建迭代"}}
 返回的是建议(未执行),用户确认后才执行。"""

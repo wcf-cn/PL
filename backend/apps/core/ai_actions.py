@@ -78,6 +78,13 @@ def execute_action(action):
             m.save()
             return {"success": True, "message": f"已更新成员「{m.name}」", "affected": {"id": m.id, "name": m.name}}
 
+        elif atype == "create_member":
+            params = action.get("params", {})
+            m = Member(name=params.get("name", "未命名"), week_capacity=params.get("week_capacity", 40),
+                       modules=params.get("modules", ""), active=True)
+            m.save()
+            return {"success": True, "message": f"已创建成员「{m.name}」", "affected": {"id": m.id, "name": m.name}}
+
         elif atype == "update_sprint":
             match = action.get("match", {})
             s = _resolve_sprint(match.get("name") or match.get("id"))
@@ -90,6 +97,18 @@ def execute_action(action):
             if "is_active" in fields: s.is_active = fields["is_active"]
             s.save()
             return {"success": True, "message": f"已更新迭代「{s.name}」", "affected": {"id": s.id, "name": s.name}}
+
+        elif atype == "create_sprint":
+            params = action.get("params", {})
+            from datetime import date as _date
+            s = Sprint(
+                name=params.get("name", "新迭代"),
+                start_date=params.get("start_date", _date.today().isoformat()),
+                end_date=params.get("end_date", _date.today().isoformat()),
+                is_active=params.get("is_active", False)
+            )
+            s.save()
+            return {"success": True, "message": f"已创建迭代「{s.name}」", "affected": {"id": s.id, "name": s.name}}
 
         else:
             return {"success": False, "message": f"不支持的操作类型: {atype}"}
