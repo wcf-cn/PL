@@ -9,7 +9,8 @@ from django.db import models
 from .models import Member, Sprint, Requirement, Milestone, BurndownSnapshot
 from .serializers import MemberSerializer, SprintSerializer, RequirementSerializer, MilestoneSerializer
 from . import capacity
-from .ai import chat_with_glm, parse_drafts, strip_json_block, build_system_prompt
+from .ai import chat_with_glm, parse_drafts, strip_json_block, build_system_prompt, parse_actions, strip_actions_block
+from .ai_actions import execute_action
 
 class MemberViewSet(viewsets.ModelViewSet):
     queryset = Member.objects.all()
@@ -141,4 +142,10 @@ def ai_chat(request):
         return Response({"detail": "AI 未配置(GLM_API_KEY)"}, status=status.HTTP_400_BAD_REQUEST)
     except Exception:
         return Response({"detail": "AI 服务暂不可用"}, status=status.HTTP_502_BAD_GATEWAY)
-    return Response({"reply": strip_json_block(reply), "drafts": parse_drafts(reply)})
+    reply_text = strip_actions_block(strip_json_block(reply))
+    return Response({"reply": reply_text, "drafts": parse_drafts(reply), "actions": parse_actions(reply)})
+
+@api_view(["POST"])
+def ai_execute(request):
+    result = execute_action(request.data)
+    return Response(result)

@@ -31,6 +31,19 @@ def parse_drafts(text):
 def strip_json_block(text):
     return re.sub(r"```json\s*\{.*?\}\s*```", "", text, flags=re.DOTALL).strip()
 
+def parse_actions(text):
+    """从 GLM 回复提取 actions JSON(```actions 标记)"""
+    m = re.search(r"```actions\s*(\[.*?\])\s*```", text, re.DOTALL)
+    if not m:
+        return []
+    try:
+        return json.loads(m.group(1))
+    except json.JSONDecodeError:
+        return []
+
+def strip_actions_block(text):
+    return re.sub(r"```actions\s*\[.*?\]\s*```", "", text, flags=re.DOTALL).strip()
+
 def build_system_prompt(members, sprints, modules):
     m_list = ", ".join(f'{x["name"]}(id:{x["id"]})' for x in members) or "无"
     s_list = ", ".join(f'{x["name"]}(id:{x["id"]}{"活跃" if x.get("is_active") else ""})' for x in sprints) or "无"
@@ -47,4 +60,11 @@ def build_system_prompt(members, sprints, modules):
 ```json
 {{"parent":{{"title":"..."}}, "children":[{{"title":"...","type":"模型","analysis":"..."}}]}}
 ```
-不要急于产出,先分析、追问、确认。"""
+不要急于产出,先分析、追问、确认。
+你也可以帮用户操作看板数据。用户说自然语言指令(如"把登录接口分配给张三"),你在回复末尾用 ```actions 返回操作建议。
+可用操作:
+- update_requirement: {{"type":"update_requirement","match":{{"title":"xxx"}},"fields":{{"status":"in_progress","assignee":"张三","priority":"P0"}},"description":"人话描述"}}
+- create_requirement: {{"type":"create_requirement","params":{{"title":"xxx","assignee":"张三","assigned_sprint":"S1"}},"description":"..."}}
+- delete_requirement: {{"type":"delete_requirement","match":{{"title":"xxx"}},"description":"..."}}
+- update_member: {{"type":"update_member","match":{{"name":"张三"}},"fields":{{"week_capacity":35}},"description":"..."}}
+返回的是建议(未执行),用户确认后才执行。"""

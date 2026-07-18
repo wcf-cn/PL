@@ -1,6 +1,6 @@
 from rest_framework.routers import DefaultRouter
 from django.urls import path
-from .views import MemberViewSet, SprintViewSet, RequirementViewSet, MilestoneViewSet, capacity_view, login_view, logout_view, me_view, burndown_view, ai_chat
+from .views import MemberViewSet, SprintViewSet, RequirementViewSet, MilestoneViewSet, capacity_view, login_view, logout_view, me_view, burndown_view, ai_chat, ai_execute
 
 router = DefaultRouter()
 router.register('members', MemberViewSet)
@@ -15,4 +15,5 @@ urlpatterns += [
     path('auth/me', me_view),
     path('burndown/', burndown_view),
     path('ai/chat/', ai_chat),
+    path('ai/execute/', ai_execute),
 ]
