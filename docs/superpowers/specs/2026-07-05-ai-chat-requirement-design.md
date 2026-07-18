@@ -8,7 +8,7 @@
 接入智谱 GLM 大模型,PL 通过**多轮自然语言对话**,把模糊需求描述拆解成结构化需求,确认后一键导入看板。
 
 - 用户:PL(个人自用,单用户)
-- AI:智谱 GLM(glm-4-flash 免费额度 / glm-4)
+- AI:智谱 GLM(glm-5.1)
 - 交互:**多轮聊天**(逐步细化,非单轮)
 
 ## 2. 架构
@@ -20,7 +20,7 @@
 - 上下文注入:现有 members/sprints/modules 注入 system prompt(帮 AI 填 assignee/sprint/module)
 
 ### 前端(React)
-- 新页 `/assistant`(App 路由 + Nav "AI 助手")
+- **悬浮聊天窗**(全局浮动 widget,右下角气泡按钮,点开聊天面板)— 所有页可访问,不占路由
 - 聊天 UI:消息列表(user/assistant 气泡)+ 输入框 + 发送
 - 草稿卡片:GLM 返回草稿时显示,字段可编辑 + "导入"按钮
 
@@ -56,7 +56,7 @@
 import os, requests, json, re
 
 GLM_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
-GLM_MODEL = os.environ.get("GLM_MODEL", "glm-4-flash")
+GLM_MODEL = os.environ.get("GLM_MODEL", "glm-5.1")
 
 def chat_with_glm(messages):
     key = os.environ.get("GLM_API_KEY")
