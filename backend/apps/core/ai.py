@@ -1,17 +1,23 @@
 import os, re, json, requests
 from django.conf import settings
 
-GLM_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+GLM_URL = "https://open.bigmodel.cn/api/anthropic/v1/messages"
 
 def chat_with_glm(messages):
     key = os.environ.get("GLM_API_KEY", getattr(settings, "GLM_API_KEY", ""))
     if not key:
         raise ValueError("GLM_API_KEY 未配置")
-    model = os.environ.get("GLM_MODEL", getattr(settings, "GLM_MODEL", "glm-5.1"))
-    resp = requests.post(GLM_URL, headers={"Authorization": f"Bearer {key}"},
-        json={"model": model, "messages": messages}, timeout=30)
+    model = os.environ.get("GLM_MODEL", getattr(settings, "GLM_MODEL", "glm-5.2"))
+    # Anthropic 兼容端点(coding plan 通道):system 提取为 top-level,messages 只留 user/assistant
+    system = ""
+    chat_msgs = messages
+    if messages and messages[0].get("role") == "system":
+        system = messages[0]["content"]
+        chat_msgs = messages[1:]
+    resp = requests.post(GLM_URL, headers={"x-api-key": key, "anthropic-version": "2023-06-01"},
+        json={"model": model, "system": system, "messages": chat_msgs, "max_tokens": 2048}, timeout=30)
     resp.raise_for_status()
-    return resp.json()["choices"][0]["message"]["content"]
+    return resp.json()["content"][0]["text"]
 
 def parse_drafts(text):
     m = re.search(r"```json\s*(\[.*?\])\s*```", text, re.DOTALL)

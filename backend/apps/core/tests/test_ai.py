@@ -28,7 +28,7 @@ def test_build_system_prompt_includes_context():
 @patch("apps.core.ai.requests.post")
 def test_chat_with_glm_calls_api(mock_post):
     mock_resp = MagicMock()
-    mock_resp.json.return_value = {"choices":[{"message":{"content":"hi"}}]}
+    mock_resp.json.return_value = {"content":[{"type":"text","text":"hi"}]}
     mock_resp.raise_for_status = MagicMock()
     mock_post.return_value = mock_resp
     import os
