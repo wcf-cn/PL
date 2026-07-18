@@ -29,6 +29,8 @@ export default function Board() {
   const [mnote, setMNote] = useState('')
   const [error, setError] = useState('')
   const [showDone, setShowDone] = useState(false)
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const load = () => api.requirements.list().then(setItems)
   useEffect(() => {
     load()
@@ -87,6 +89,27 @@ export default function Board() {
       closeForm()
     } catch {
       setError('删除失败')
+    }
+  }
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+  const exitSelect = () => { setSelectMode(false); setSelectedIds(new Set()) }
+  const batchDelete = async () => {
+    if (selectedIds.size === 0) return
+    if (!window.confirm(`确认删除选中的 ${selectedIds.size} 个需求?关联里程碑也会删除。`)) return
+    const ids = Array.from(selectedIds)
+    try {
+      await Promise.all(ids.map(id => api.requirements.remove(id)))
+      setItems(prev => prev.filter(r => !selectedIds.has(r.id)))
+      exitSelect()
+    } catch {
+      setError('批量删除失败')
     }
   }
 
@@ -162,11 +185,17 @@ export default function Board() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <Button onClick={openCreate}>+ 新建需求</Button>
         <Button variant="outline" onClick={() => setShowDone(!showDone)}>
           {showDone ? '隐藏已上线' : '显示已上线'}
         </Button>
+        <Button variant={selectMode ? 'default' : 'outline'} onClick={() => selectMode ? exitSelect() : setSelectMode(true)}>
+          {selectMode ? '取消选择' : '选择'}
+        </Button>
+        {selectMode && selectedIds.size > 0 && (
+          <Button variant="destructive" onClick={batchDelete}>批量删除({selectedIds.size})</Button>
+        )}
       </div>
 
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) closeForm() }}>
@@ -340,14 +369,14 @@ export default function Board() {
 
       <div className="flex gap-3 overflow-x-auto pb-4">
         {STATUS_ORDER.filter(st => showDone || st !== 'done').map(st => (
-          <Column key={st} status={st} items={items.filter(r => r.status === st)} onDrop={onDrop} onEdit={startEdit} />
+          <Column key={st} status={st} items={items.filter(r => r.status === st)} onDrop={onDrop} onEdit={startEdit} selectMode={selectMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} />
         ))}
       </div>
     </div>
   )
 }
 
-function Column({ status, items, onDrop, onEdit }:{ status:Status; items:Requirement[]; onDrop:(s:Status,id:number)=>void; onEdit:(r:Requirement)=>void }) {
+function Column({ status, items, onDrop, onEdit, selectMode, selectedIds, onToggleSelect }:{ status:Status; items:Requirement[]; onDrop:(s:Status,id:number)=>void; onEdit:(r:Requirement)=>void; selectMode:boolean; selectedIds:Set<number>; onToggleSelect:(id:number)=>void }) {
   const [over, setOver] = useState(false)
   return (
     <div
@@ -368,21 +397,29 @@ function Column({ status, items, onDrop, onEdit }:{ status:Status; items:Require
         className="min-h-[300px] space-y-2"
       >
         {items.map(r => (
-          <RequirementCard key={r.id} requirement={r} onEdit={onEdit} />
+          <RequirementCard key={r.id} requirement={r} onEdit={onEdit} selectMode={selectMode} selected={selectedIds.has(r.id)} onToggle={onToggleSelect} />
         ))}
       </div>
     </div>
   )
 }
 
-function RequirementCard({ requirement, onEdit }: { requirement: Requirement; onEdit: (r: Requirement) => void }) {
+function RequirementCard({ requirement, onEdit, selectMode, selected, onToggle }: { requirement: Requirement; onEdit: (r: Requirement) => void; selectMode: boolean; selected: boolean; onToggle: (id: number) => void }) {
   return (
     <Card
-      draggable
+      draggable={!selectMode}
       onDragStart={e=>(e as any).dataTransfer.setData('id', String(requirement.id))}
-      onDoubleClick={()=>onEdit(requirement)}
-      className="cursor-move hover:shadow-md transition-shadow"
+      onClick={selectMode ? () => onToggle(requirement.id) : undefined}
+      onDoubleClick={selectMode ? undefined : () => onEdit(requirement)}
+      className={cn(
+        selectMode ? 'cursor-pointer' : 'cursor-move',
+        'hover:shadow-md transition-shadow relative',
+        selectMode && selected && 'ring-2 ring-primary'
+      )}
     >
+      {selectMode && selected && (
+        <span className="absolute top-1 right-1 bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs">✓</span>
+      )}
       <CardContent className="p-3">
         <div className="font-medium mb-2">{requirement.title}</div>
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
