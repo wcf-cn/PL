@@ -1,118 +1,68 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { api } from '../api'
-import type { BurndownData, Sprint } from '../types'
+import type { Requirement } from '../types'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
+import { STATUS_LABEL } from '../types'
 
 export default function Burndown() {
-  const [sprints, setSprints] = useState<Sprint[]>([])
-  const [sid, setSid] = useState<number | ''>('')
-  const [burndownData, setBurndownData] = useState<BurndownData | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [reqs, setReqs] = useState<Requirement[]>([])
 
-  useEffect(() => {
-    api.sprints.list().then(s => {
-      setSprints(s)
-      const active = s.find(x => x.is_active)
-      setSid(active ? active.id : s[0]?.id ?? '')
+  useEffect(() => { api.requirements.list().then(setReqs) }, [])
+
+  const { totalEffort, remaining, done, data } = useMemo(() => {
+    const all = reqs
+    const total = all.reduce((s, r) => s + r.est_effort, 0)
+    const inFlight = all.filter(r => !['done', 'paused'].includes(r.status))
+    const rem = inFlight.reduce((s, r) => s + r.est_effort, 0)
+    const dn = all.filter(r => r.status === 'done').reduce((s, r) => s + r.est_effort, 0)
+
+    // 按状态分组统计工时
+    const byStatus: Record<string, number> = {}
+    all.forEach(r => {
+      const label = STATUS_LABEL[r.status as keyof typeof STATUS_LABEL] || r.status
+      byStatus[label] = (byStatus[label] || 0) + r.est_effort
     })
-  }, [])
 
-  useEffect(() => {
-    if (sid) {
-      setLoading(true)
-      api.burndown(Number(sid)).then(data => {
-        setBurndownData(data)
-        setLoading(false)
-      }).catch(() => setLoading(false))
-    }
-  }, [sid])
+    // 理想线:从 total 到 0(等分),实际线:当前剩余
+    // 简化:只画当前快照点
+    const chartData = [
+      { date: '总工时', ideal: total, actual: total },
+      { date: '当前', ideal: Math.round(total * 0.5), actual: rem },
+      { date: '目标', ideal: 0, actual: 0 },
+    ]
 
-  if (loading) return <div className="p-6 text-sm text-muted-foreground">加载中…</div>
-  if (!burndownData) return <Card className="p-6"><CardContent className="text-sm text-muted-foreground">暂无数据</CardContent></Card>
+    return { totalEffort: total, remaining: rem, done: dn, data: chartData }
+  }, [reqs])
 
-  const { sprint, total_effort, snapshots } = burndownData
-
-  // Generate ideal line data points (start with total, end with 0)
-  const startDate = new Date(sprint.start_date)
-  const endDate = new Date(sprint.end_date)
-  const dayCount = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-
-  const idealLine = Array.from({ length: dayCount + 1 }, (_, i) => {
-    const date = new Date(startDate)
-    date.setDate(date.getDate() + i)
-    const progress = i / dayCount
-    return {
-      date: date.toISOString().split('T')[0],
-      理想线: total_effort * (1 - progress)
-    }
-  })
-
-  // Convert snapshots to actual line data
-  const actualLine = snapshots.map(s => ({
-    date: s.date,
-    实际线: s.remaining_effort
-  }))
-
-  // Merge and sort by date
-  const allData = [...idealLine, ...actualLine].sort((a, b) =>
-    new Date(a.date).getTime() - new Date(b.date).getTime()
-  )
+  if (reqs.length === 0) {
+    return <Card><CardContent className="p-6 text-sm text-muted-foreground">暂无需求数据</CardContent></Card>
+  }
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>燃尽图</CardTitle>
-          <Select value={sid?.toString() || ''} onValueChange={(v) => setSid(v ? Number(v) : '')}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="选择迭代" />
-            </SelectTrigger>
-            <SelectContent>
-              {sprints.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+      <CardHeader><CardTitle>工时总览(全部需求)</CardTitle></CardHeader>
+      <CardContent>
+        <div className="flex gap-4 mb-4 text-sm">
+          <span>总工时 <b>{totalEffort}h</b></span>
+          <span>已完成 <b className="text-green-600">{done}h</b></span>
+          <span>剩余 <b className="text-orange-600">{remaining}h</b></span>
+          <span>完成率 <b>{totalEffort > 0 ? ((done / totalEffort) * 100).toFixed(0) : 0}%</b></span>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center gap-4 text-sm">
-          <span className="text-muted-foreground">总工时: {total_effort}h</span>
-          <span className="text-muted-foreground">剩余: {snapshots.length > 0 ? snapshots[snapshots.length - 1].remaining_effort : 0}h</span>
-        </div>
-        <ResponsiveContainer width="100%" height={400}>
-          <LineChart data={allData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis
-              dataKey="date"
-              tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
-              stroke="hsl(var(--muted-foreground))"
-            />
-            <YAxis
-              tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
-              stroke="hsl(var(--muted-foreground))"
-              label={{ value: '剩余工时 (h)', angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))' }}
-            />
-            <Tooltip
-              contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
-            />
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+            <YAxis label={{ value: '工时(h)', angle: -90, position: 'insideLeft', fontSize: 12 }} tick={{ fontSize: 12 }} />
+            <Tooltip />
             <Legend />
-            <Line
-              type="linear"
-              dataKey="理想线"
-              stroke="hsl(var(--chart-1))"
-              strokeDasharray="5 5"
-              dot={false}
-            />
-            <Line
-              type="monotone"
-              dataKey="实际线"
-              stroke="hsl(var(--chart-2))"
-              strokeWidth={2}
-              dot={{ r: 4, fill: 'hsl(var(--chart-2))' }}
-            />
+            <Line type="monotone" dataKey="ideal" name="理想线" stroke="#8884d8" strokeDasharray="5 5" />
+            <Line type="monotone" dataKey="actual" name="实际剩余" stroke="#ff7300" strokeWidth={2} />
           </LineChart>
         </ResponsiveContainer>
+        <p className="text-xs text-muted-foreground mt-2">
+          理想线:总工时均匀消耗到 0。实际剩余:当前在途需求的工时之和(排除已上线/暂停)。
+        </p>
       </CardContent>
     </Card>
   )

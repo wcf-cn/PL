@@ -1,8 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { api } from '../api'
-import { STATUS_LABEL, type Sprint, type Requirement, type Status } from '../types'
+import { STATUS_LABEL, type Requirement, type Status } from '../types'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { cn } from '../lib/utils'
@@ -25,8 +24,6 @@ const GAP_THRESHOLD = 4
 const COLLAPSE_MARKER_WIDTH = 96
 
 export default function Gantt() {
-  const [sprints, setSprints] = useState<Sprint[]>([])
-  const [sid, setSid] = useState<number | ''>('')
   const [reqs, setReqs] = useState<Requirement[]>([])
   const [dragging, setDragging] = useState<{id: number, origStart: string, origEnd: string, newStart: string, newEnd: string} | null>(null)
   const [axisExpanded, setAxisExpanded] = useState(false)
@@ -35,16 +32,8 @@ export default function Gantt() {
   const timelineRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    api.sprints.list().then(s => {
-      setSprints(s)
-      const active = s.find(x => x.is_active)
-      setSid(active ? active.id : s[0]?.id ?? '')
-    })
+    api.requirements.list().then(setReqs)
   }, [])
-
-  useEffect(() => {
-    if (sid) api.requirements.list({ assigned_sprint: String(sid) }).then(setReqs)
-  }, [sid])
 
   // Measure container width for adaptive day width
   useEffect(() => {
@@ -67,12 +56,7 @@ export default function Gantt() {
 
   // Parse dates consistently at midnight local time
   const parseDate = (d: string) => { const x = new Date(d); x.setHours(0,0,0,0); return x }
-  const selectedSprint = sprints.find(s => s.id === sid)
   const dates = validReqs.flatMap(r => [parseDate(r.planned_start!), parseDate(r.planned_end!)])
-  // 纳入整个 sprint 周期,日期补全到 sprint 末(不只任务最晚日期)
-  if (selectedSprint) {
-    dates.push(parseDate(selectedSprint.start_date), parseDate(selectedSprint.end_date))
-  }
   const minDate = new Date(Math.min(...dates.map(d => d.getTime())))
   const maxDate = new Date(Math.max(...dates.map(d => d.getTime())))
   const totalDays = Math.ceil((maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24))
@@ -263,14 +247,6 @@ export default function Gantt() {
                 ? <Button variant="outline" size="sm" onClick={() => { setAxisExpanded(false); setExpandedGaps(new Set()) }}>收起空段</Button>
                 : <Button variant="outline" size="sm" onClick={() => setAxisExpanded(true)}>全部展开</Button>
             )}
-            <Select value={sid?.toString() || ''} onValueChange={(v) => setSid(v ? Number(v) : '')}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="选择迭代" />
-              </SelectTrigger>
-              <SelectContent>
-                {sprints.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
           </div>
         </div>
       </CardHeader>

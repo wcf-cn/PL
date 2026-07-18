@@ -1,72 +1,67 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
-import type { Sprint, CapacityRow } from '../types'
+import type { Member, Requirement, CapacityRow } from '../types'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table'
 import { Badge } from '../components/ui/badge'
 
 function utilizationBadge(u: number) {
-  if (u > 1) return <Badge variant="destructive">{(u * 100).toFixed(1)}%</Badge>
-  if (u >= 0.8) return <Badge variant="secondary">{(u * 100).toFixed(1)}%</Badge>
-  return <Badge variant="default">{(u * 100).toFixed(1)}%</Badge>
+  if (u > 1) return <Badge variant="destructive">{(u * 100).toFixed(0)}%</Badge>
+  if (u >= 0.8) return <Badge variant="secondary">{(u * 100).toFixed(0)}%</Badge>
+  return <Badge>{(u * 100).toFixed(0)}%</Badge>
 }
 
 export default function Capacity() {
-  const [sprints, setSprints] = useState<Sprint[]>([])
-  const [sid, setSid] = useState<number | ''>('')
-  const [rows, setRows] = useState<CapacityRow[]>([])
-  useEffect(() => { api.sprints.list().then(s => { setSprints(s); const a = s.find(x=>x.is_active); setSid(a?a.id:s[0]?.id??'') }) }, [])
-  useEffect(() => { if (sid) api.capacity(Number(sid)).then(setRows) }, [sid])
+  const [members, setMembers] = useState<Member[]>([])
+  const [reqs, setReqs] = useState<Requirement[]>([])
+
+  useEffect(() => {
+    api.members.list().then(setMembers)
+    api.requirements.list().then(setReqs)
+  }, [])
+
+  const inFlight = reqs.filter(r => !['done', 'paused'].includes(r.status))
+  const rows: CapacityRow[] = members.filter(m => m.active).map(m => {
+    const load = inFlight.filter(r => r.assignee === m.id).reduce((sum, r) => sum + r.est_effort, 0)
+    const capacity = m.week_capacity
+    return { member_id: m.id, member: m.name, capacity, load, utilization: capacity > 0 ? load / capacity : 0 }
+  }).sort((a, b) => b.utilization - a.utilization)
+
+  const totalCap = rows.reduce((s, r) => s + r.capacity, 0)
+  const totalLoad = rows.reduce((s, r) => s + r.load, 0)
+
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>产能分析</CardTitle>
-          <Select value={sid?.toString() || ''} onValueChange={(v) => setSid(v ? Number(v) : '')}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="选择迭代" />
-            </SelectTrigger>
-            <SelectContent>
-              {sprints.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
+        <CardTitle>产能分析(全部)</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {rows.length === 0 ? (
-          <div className="text-sm text-muted-foreground">暂无数据</div>
-        ) : (
-          <>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span>总容量: {rows.reduce((sum, r) => sum + r.capacity, 0)}h</span>
-              <span>总占用: {rows.reduce((sum, r) => sum + r.load, 0)}h</span>
-            </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>成员</TableHead>
-                  <TableHead>容量(h)</TableHead>
-                  <TableHead>占用(h)</TableHead>
-                  <TableHead>利用率</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map(r => (
-                  <TableRow key={r.member_id}>
-                    <TableCell>{r.member}</TableCell>
-                    <TableCell>{r.capacity}</TableCell>
-                    <TableCell>{r.load}</TableCell>
-                    <TableCell>{utilizationBadge(r.utilization)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            <p className="text-xs text-muted-foreground">
-              绿色 &lt;80% · 黄色 80–100% · 红色 &gt;100% 超载。已按利用率降序(后端排序)。
-            </p>
-          </>
-        )}
+      <CardContent>
+        <div className="flex gap-4 mb-4 text-sm">
+          <span>总容量 <b>{totalCap}h</b></span>
+          <span>总占用 <b>{totalLoad}h</b></span>
+          <span>总利用率 <b>{totalCap > 0 ? ((totalLoad / totalCap) * 100).toFixed(0) : 0}%</b></span>
+        </div>
+        <Table>
+          <TableHeader><TableRow>
+            <TableHead>成员</TableHead>
+            <TableHead>周容量(h)</TableHead>
+            <TableHead>在途占用(h)</TableHead>
+            <TableHead>利用率(周)</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>
+            {rows.map(r => (
+              <TableRow key={r.member_id}>
+                <TableCell className="font-medium">{r.member}</TableCell>
+                <TableCell>{r.capacity}</TableCell>
+                <TableCell>{r.load}</TableCell>
+                <TableCell>{utilizationBadge(r.utilization)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <p className="text-xs text-muted-foreground mt-4">
+          绿色 &lt;80% · 黄色 80–100% · 红色 &gt;100%。利用率为在途需求工时÷周容量(表示几周的工作量)。
+        </p>
       </CardContent>
     </Card>
   )
