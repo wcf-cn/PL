@@ -125,6 +125,7 @@ export default function Gantt() {
   }
 
   const segments = buildSegmentsWithExpansion()
+  const hasGaps = buildSegments().some(s => s.type === 'gap')
 
   // Build dayToX mapping and total width
   let cumulativeX = 0
@@ -226,7 +227,7 @@ export default function Gantt() {
         <div className="flex items-center justify-between">
           <CardTitle>甘特图</CardTitle>
           <div className="flex items-center gap-2">
-            {segments.some(s => s.type === 'gap') && (
+            {hasGaps && (
               axisExpanded
                 ? <Button variant="outline" size="sm" onClick={() => { setAxisExpanded(false); setExpandedGaps(new Set()) }}>收起空段</Button>
                 : <Button variant="outline" size="sm" onClick={() => setAxisExpanded(true)}>全部展开</Button>
