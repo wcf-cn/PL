@@ -10,6 +10,7 @@ import Gantt from './pages/Gantt'
 import { Button } from './components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from './components/ui/tabs'
 import { cn } from './lib/utils'
+import AssistantWidget from './components/AssistantWidget'
 
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null)
@@ -34,6 +35,7 @@ export default function App() {
               </>}
             </Routes>
           </main>
+          {authed && <AssistantWidget />}
         </div>
       </div>
     </HashRouter>
