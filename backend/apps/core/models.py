@@ -66,6 +66,8 @@ class Requirement(models.Model):
     planned_start = models.DateField('预计开始', null=True, blank=True)
     planned_end = models.DateField('预计结束', null=True, blank=True)
     note = models.TextField('备注', blank=True)
+    parent = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True,
+                               related_name='children', verbose_name='父需求')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
