@@ -448,7 +448,7 @@ function RequirementCard({ requirement, allItems, onEdit, selectMode, selected, 
         {expanded && hasChildren && (
           <div className="mt-3 pl-3 border-l-2 border-muted space-y-2">
             {children.map(c => (
-              <div key={c.id} onDoubleClick={()=>onEdit(c)} className="text-xs bg-muted/30 rounded p-2 cursor-pointer hover:bg-muted/50">
+              <div key={c.id} onDoubleClick={(e)=>{e.stopPropagation(); onEdit(c)}} className="text-xs bg-muted/30 rounded p-2 cursor-pointer hover:bg-muted/50">
                 <div className="flex items-center gap-1">
                   <span className="text-muted-foreground">↳</span>
                   {c.note && c.note.match(/\[(.+?)\]/) ? <Badge variant="outline" className="text-xs">{c.note.match(/\[(.+?)\]/)![1]}</Badge> : null}
