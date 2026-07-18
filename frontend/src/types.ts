@@ -84,3 +84,14 @@ export const STATUS_LABEL: Record<Status,string> = {
 export const STATUS_ORDER: Status[] = ['backlog','scheduled','in_progress','testing','done','blocked','paused']
 
 export const calcProgress = (est: number, actual: number) => est > 0 ? Math.round(actual / est * 100) : 0
+
+export interface ChatMessage { role: 'user' | 'assistant' | 'system'; content: string }
+export interface Draft {
+  title: string
+  status?: string
+  priority?: string
+  module?: string
+  est_effort?: number
+  assigned_sprint?: number | null
+  assignee?: number | null
+}
