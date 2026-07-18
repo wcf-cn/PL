@@ -9,6 +9,7 @@ from django.db import models
 from .models import Member, Sprint, Requirement, Milestone, BurndownSnapshot
 from .serializers import MemberSerializer, SprintSerializer, RequirementSerializer, MilestoneSerializer
 from . import capacity
+from .ai import chat_with_glm, parse_drafts, strip_json_block, build_system_prompt
 
 class MemberViewSet(viewsets.ModelViewSet):
     queryset = Member.objects.all()
@@ -124,3 +125,20 @@ def burndown_view(request):
             for snapshot in snapshots
         ]
     })
+
+@api_view(["POST"])
+def ai_chat(request):
+    message = request.data.get("message", "")
+    history = request.data.get("history", [])
+    members = list(Member.objects.values("id", "name"))
+    sprints = list(Sprint.objects.values("id", "name", "is_active"))
+    modules = list(Requirement.objects.exclude(module="").values_list("module", flat=True).distinct())
+    system = build_system_prompt(members, sprints, modules)
+    messages = [{"role": "system", "content": system}] + list(history) + [{"role": "user", "content": message}]
+    try:
+        reply = chat_with_glm(messages)
+    except ValueError:
+        return Response({"detail": "AI 未配置(GLM_API_KEY)"}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception:
+        return Response({"detail": "AI 服务暂不可用"}, status=status.HTTP_502_BAD_GATEWAY)
+    return Response({"reply": strip_json_block(reply), "drafts": parse_drafts(reply)})
