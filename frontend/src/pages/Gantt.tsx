@@ -4,6 +4,7 @@ import { STATUS_LABEL, type Sprint, type Requirement, type Status } from '../typ
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import { Badge } from '../components/ui/badge'
+import { Button } from '../components/ui/button'
 import { cn } from '../lib/utils'
 
 const STATUS_COLORS: Record<Status, string> = {
@@ -224,14 +225,21 @@ export default function Gantt() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>甘特图</CardTitle>
-          <Select value={sid?.toString() || ''} onValueChange={(v) => setSid(v ? Number(v) : '')}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="选择迭代" />
-            </SelectTrigger>
-            <SelectContent>
-              {sprints.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            {segments.some(s => s.type === 'gap') && (
+              axisExpanded
+                ? <Button variant="outline" size="sm" onClick={() => { setAxisExpanded(false); setExpandedGaps(new Set()) }}>收起空段</Button>
+                : <Button variant="outline" size="sm" onClick={() => setAxisExpanded(true)}>全部展开</Button>
+            )}
+            <Select value={sid?.toString() || ''} onValueChange={(v) => setSid(v ? Number(v) : '')}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="选择迭代" />
+              </SelectTrigger>
+              <SelectContent>
+                {sprints.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -289,25 +297,6 @@ export default function Gantt() {
                   )
                 }
               })}
-              {segments.some(s => s.type === 'gap') && !axisExpanded && (
-                <button
-                  onClick={() => setAxisExpanded(true)}
-                  className="absolute right-2 top-1 text-[10px] text-muted-foreground hover:text-foreground cursor-pointer bg-background border rounded px-1"
-                >
-                  全部展开
-                </button>
-              )}
-              {axisExpanded && (
-                <button
-                  onClick={() => {
-                    setAxisExpanded(false)
-                    setExpandedGaps(new Set())
-                  }}
-                  className="absolute right-2 top-1 text-[10px] text-muted-foreground hover:text-foreground cursor-pointer bg-background border rounded px-1"
-                >
-                  收起空段
-                </button>
-              )}
             </div>
             {assigneeNames.map(assigneeName => (
               <div key={assigneeName}>
