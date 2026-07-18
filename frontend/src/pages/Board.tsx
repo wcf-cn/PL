@@ -78,6 +78,18 @@ export default function Board() {
     setMTitle(''); setMDate(''); setMNote('')
   }
 
+  const deleteReq = async () => {
+    if (!editingId) return
+    if (!window.confirm('确认删除该需求?关联的里程碑也会一并删除。')) return
+    try {
+      await api.requirements.remove(editingId)
+      setItems(prev => prev.filter(r => r.id !== editingId))
+      closeForm()
+    } catch {
+      setError('删除失败')
+    }
+  }
+
   const openCreate = () => {
     setEditingId(null)
     setForm({ title: '', status: 'backlog', priority: 'P1', assignee: null, module: '', est_effort: '', actual_effort: '', planned_start: '', planned_end: '', assigned_sprint: null })
@@ -313,9 +325,14 @@ export default function Board() {
               )}
 
               {error && <div className="text-destructive text-sm">{error}</div>}
-              <DialogFooter>
-                <Button type="submit">提交</Button>
-                <Button type="button" variant="outline" onClick={closeForm}>取消</Button>
+              <DialogFooter className="sm:justify-between gap-2">
+                {editingId
+                  ? <Button type="button" variant="destructive" onClick={deleteReq}>删除</Button>
+                  : <div />}
+                <div className="flex gap-2">
+                  <Button type="submit">提交</Button>
+                  <Button type="button" variant="outline" onClick={closeForm}>取消</Button>
+                </div>
               </DialogFooter>
             </form>
         </DialogContent>
