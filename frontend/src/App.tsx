@@ -7,6 +7,7 @@ import Capacity from './pages/Capacity'
 import Schedule from './pages/Schedule'
 import Burndown from './pages/Burndown'
 import Gantt from './pages/Gantt'
+import Team from './pages/Team'
 import { Button } from './components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from './components/ui/tabs'
 import { cn } from './lib/utils'
@@ -31,6 +32,7 @@ export default function App() {
                 <Route path="/schedule" element={<Schedule />} />
                 <Route path="/burndown" element={<Burndown />} />
                 <Route path="/gantt" element={<Gantt />} />
+                <Route path="/team" element={<Team />} />
                 <Route path="*" element={<Navigate to="/board" />} />
               </>}
             </Routes>
@@ -54,6 +56,7 @@ function Nav({authed, onLogout}:{authed:boolean; onLogout:()=>void}) {
     { href: '#/schedule', label: '排期' },
     { href: '#/burndown', label: '燃尽' },
     { href: '#/gantt', label: '甘特' },
+    { href: '#/team', label: '团队' },
   ]
 
   return (
