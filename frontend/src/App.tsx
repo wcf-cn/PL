@@ -52,10 +52,6 @@ function Nav({authed, onLogout}:{authed:boolean; onLogout:()=>void}) {
 
   const navItems = [
     { href: '#/board', label: '看板' },
-    { href: '#/capacity', label: '产能' },
-    { href: '#/schedule', label: '排期' },
-    { href: '#/burndown', label: '燃尽' },
-    { href: '#/gantt', label: '甘特' },
     { href: '#/team', label: '团队' },
   ]
 

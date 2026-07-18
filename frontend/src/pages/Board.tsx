@@ -20,7 +20,7 @@ const PRIO_VARIANT: Record<string, "default" | "secondary" | "destructive" | "ou
 export default function Board() {
   const [items, setItems] = useState<Requirement[]>([])
   const [members, setMembers] = useState<Member[]>([])
-  const [sprints, setSprints] = useState<Sprint[]>([])
+  const [, setSprints] = useState<Sprint[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [milestones, setMilestones] = useState<any[]>([])
@@ -297,18 +297,6 @@ export default function Board() {
                     value={form.planned_end}
                     onChange={e => setForm({...form, planned_end: e.target.value})}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="sprint">所属迭代</Label>
-                  <Select value={form.assigned_sprint?.toString() || ''} onValueChange={(v) => setForm({...form, assigned_sprint: v ? Number(v) : null})}>
-                    <SelectTrigger id="sprint">
-                      <SelectValue placeholder="未分配" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">未分配</SelectItem>
-                      {sprints.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
 
