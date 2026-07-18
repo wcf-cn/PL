@@ -18,7 +18,7 @@ const STATUS_COLORS: Record<Status, string> = {
 }
 
 // Fixed day width for consistent timeline rendering
-const DAY_W = 44
+const BASE_DAY_W = 44
 
 // Gap-based collapse threshold
 const GAP_THRESHOLD = 4
@@ -31,6 +31,7 @@ export default function Gantt() {
   const [dragging, setDragging] = useState<{id: number, origStart: string, origEnd: string, newStart: string, newEnd: string} | null>(null)
   const [axisExpanded, setAxisExpanded] = useState(false)
   const [expandedGaps, setExpandedGaps] = useState<Set<string>>(new Set())
+  const [containerWidth, setContainerWidth] = useState(0)
   const timelineRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -45,6 +46,23 @@ export default function Gantt() {
     if (sid) api.requirements.list({ assigned_sprint: String(sid) }).then(setReqs)
   }, [sid])
 
+  // Measure container width for adaptive day width
+  useEffect(() => {
+    const timeline = timelineRef.current
+    if (!timeline) return
+
+    const updateWidth = () => {
+      setContainerWidth(timeline.clientWidth)
+    }
+
+    updateWidth()
+
+    const resizeObserver = new ResizeObserver(updateWidth)
+    resizeObserver.observe(timeline)
+
+    return () => resizeObserver.disconnect()
+  }, [])
+
   const validReqs = reqs.filter(r => r.planned_start && r.planned_end)
   if (!validReqs.length) return <Card className="p-6"><CardContent className="text-sm text-muted-foreground">该迭代无计划日期的需求</CardContent></Card>
 
@@ -54,6 +72,9 @@ export default function Gantt() {
   const minDate = new Date(Math.min(...dates.map(d => d.getTime())))
   const maxDate = new Date(Math.max(...dates.map(d => d.getTime())))
   const totalDays = Math.ceil((maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24))
+
+  // Adaptive day width: stretch when few days, use base when many days
+  const DAY_W = totalDays * BASE_DAY_W < containerWidth ? Math.floor(containerWidth / totalDays) : BASE_DAY_W
 
   const position = (dateStr: string) => {
     const date = parseDate(dateStr)
