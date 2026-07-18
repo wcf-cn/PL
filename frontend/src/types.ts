@@ -34,6 +34,7 @@ export interface Requirement {
   planned_start:string|null;
   planned_end:string|null;
   note:string;
+  parent: number | null;
 }
 
 export interface CapacityRow {
@@ -94,4 +95,10 @@ export interface Draft {
   est_effort?: number
   assigned_sprint?: number | null
   assignee?: number | null
+  parent?: number | null
+}
+
+export interface DraftResult {
+  parent: { title: string }
+  children: Array<{ title: string; type?: string; analysis?: string }>
 }
