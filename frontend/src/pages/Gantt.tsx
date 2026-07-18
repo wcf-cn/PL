@@ -51,17 +51,16 @@ export default function Gantt() {
     const timeline = timelineRef.current
     if (!timeline) return
 
-    const updateWidth = () => {
-      setContainerWidth(timeline.clientWidth)
-    }
-
+    const updateWidth = () => setContainerWidth(timeline.clientWidth)
     updateWidth()
+    // mount 时 layout 可能还没完成(clientWidth=0),下一帧再测一次
+    const raf = requestAnimationFrame(updateWidth)
 
     const resizeObserver = new ResizeObserver(updateWidth)
     resizeObserver.observe(timeline)
 
-    return () => resizeObserver.disconnect()
-  }, [])
+    return () => { resizeObserver.disconnect(); cancelAnimationFrame(raf) }
+  }, [reqs])
 
   const validReqs = reqs.filter(r => r.planned_start && r.planned_end)
   if (!validReqs.length) return <Card className="p-6"><CardContent className="text-sm text-muted-foreground">该迭代无计划日期的需求</CardContent></Card>
