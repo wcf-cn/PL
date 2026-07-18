@@ -369,14 +369,14 @@ export default function Board() {
 
       <div className="flex gap-3 overflow-x-auto pb-4">
         {STATUS_ORDER.filter(st => showDone || st !== 'done').map(st => (
-          <Column key={st} status={st} items={items.filter(r => r.status === st)} onDrop={onDrop} onEdit={startEdit} selectMode={selectMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} />
+          <Column key={st} status={st} items={items.filter(r => r.status === st && !r.parent)} allItems={items} onDrop={onDrop} onEdit={startEdit} selectMode={selectMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} />
         ))}
       </div>
     </div>
   )
 }
 
-function Column({ status, items, onDrop, onEdit, selectMode, selectedIds, onToggleSelect }:{ status:Status; items:Requirement[]; onDrop:(s:Status,id:number)=>void; onEdit:(r:Requirement)=>void; selectMode:boolean; selectedIds:Set<number>; onToggleSelect:(id:number)=>void }) {
+function Column({ status, items, allItems, onDrop, onEdit, selectMode, selectedIds, onToggleSelect }:{ status:Status; items:Requirement[]; allItems:Requirement[]; onDrop:(s:Status,id:number)=>void; onEdit:(r:Requirement)=>void; selectMode:boolean; selectedIds:Set<number>; onToggleSelect:(id:number)=>void }) {
   const [over, setOver] = useState(false)
   return (
     <div
@@ -397,14 +397,17 @@ function Column({ status, items, onDrop, onEdit, selectMode, selectedIds, onTogg
         className="min-h-[300px] space-y-2"
       >
         {items.map(r => (
-          <RequirementCard key={r.id} requirement={r} onEdit={onEdit} selectMode={selectMode} selected={selectedIds.has(r.id)} onToggle={onToggleSelect} />
+          <RequirementCard key={r.id} requirement={r} allItems={allItems} onEdit={onEdit} selectMode={selectMode} selected={selectedIds.has(r.id)} onToggle={onToggleSelect} />
         ))}
       </div>
     </div>
   )
 }
 
-function RequirementCard({ requirement, onEdit, selectMode, selected, onToggle }: { requirement: Requirement; onEdit: (r: Requirement) => void; selectMode: boolean; selected: boolean; onToggle: (id: number) => void }) {
+function RequirementCard({ requirement, allItems, onEdit, selectMode, selected, onToggle }: { requirement: Requirement; allItems: Requirement[]; onEdit: (r: Requirement) => void; selectMode: boolean; selected: boolean; onToggle: (id: number) => void }) {
+  const [expanded, setExpanded] = useState(false)
+  const children = allItems.filter(r => r.parent === requirement.id)
+  const hasChildren = children.length > 0
   return (
     <Card
       draggable={!selectMode}
@@ -421,7 +424,15 @@ function RequirementCard({ requirement, onEdit, selectMode, selected, onToggle }
         <span className="absolute top-1 right-1 bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs">✓</span>
       )}
       <CardContent className="p-3">
-        <div className="font-medium mb-2">{requirement.title}</div>
+        <div className="flex items-center justify-between mb-2">
+          <span className="font-medium">{requirement.title}</span>
+          {hasChildren && !selectMode && (
+            <button onClick={(e)=>{e.stopPropagation(); setExpanded(!expanded)}} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+              <Badge variant="secondary">子{children.length}</Badge>
+              {expanded ? '▼' : '▶'}
+            </button>
+          )}
+        </div>
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <Badge variant={PRIO_VARIANT[requirement.priority]} className="text-xs">
             {requirement.priority}
@@ -434,6 +445,20 @@ function RequirementCard({ requirement, onEdit, selectMode, selected, onToggle }
             <span>{requirement.planned_start || '?'}~{requirement.planned_end || '?'}</span>
           )}
         </div>
+        {expanded && hasChildren && (
+          <div className="mt-3 pl-3 border-l-2 border-muted space-y-2">
+            {children.map(c => (
+              <div key={c.id} onDoubleClick={()=>onEdit(c)} className="text-xs bg-muted/30 rounded p-2 cursor-pointer hover:bg-muted/50">
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground">↳</span>
+                  {c.note && c.note.match(/\[(.+?)\]/) ? <Badge variant="outline" className="text-xs">{c.note.match(/\[(.+?)\]/)![1]}</Badge> : null}
+                  <span className="font-medium">{c.title}</span>
+                </div>
+                <div className="text-muted-foreground mt-0.5">{c.assignee_name||'未分配'} · {c.est_effort}h · {STATUS_LABEL[c.status]}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   )
