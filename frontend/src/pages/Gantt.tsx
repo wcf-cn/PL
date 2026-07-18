@@ -68,7 +68,12 @@ export default function Gantt() {
 
   // Parse dates consistently at midnight local time
   const parseDate = (d: string) => { const x = new Date(d); x.setHours(0,0,0,0); return x }
+  const selectedSprint = sprints.find(s => s.id === sid)
   const dates = validReqs.flatMap(r => [parseDate(r.planned_start!), parseDate(r.planned_end!)])
+  // 纳入整个 sprint 周期,日期补全到 sprint 末(不只任务最晚日期)
+  if (selectedSprint) {
+    dates.push(parseDate(selectedSprint.start_date), parseDate(selectedSprint.end_date))
+  }
   const minDate = new Date(Math.min(...dates.map(d => d.getTime())))
   const maxDate = new Date(Math.max(...dates.map(d => d.getTime())))
   const totalDays = Math.ceil((maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24))
