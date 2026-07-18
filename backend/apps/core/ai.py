@@ -20,21 +20,31 @@ def chat_with_glm(messages):
     return resp.json()["content"][0]["text"]
 
 def parse_drafts(text):
-    m = re.search(r"```json\s*(\[.*?\])\s*```", text, re.DOTALL)
+    m = re.search(r"```json\s*(\{.*?\})\s*```", text, re.DOTALL)
     if not m:
-        return []
+        return None
     try:
         return json.loads(m.group(1))
     except json.JSONDecodeError:
-        return []
+        return None
 
 def strip_json_block(text):
-    return re.sub(r"```json\s*\[.*?\]\s*```", "", text, flags=re.DOTALL).strip()
+    return re.sub(r"```json\s*\{.*?\}\s*```", "", text, flags=re.DOTALL).strip()
 
 def build_system_prompt(members, sprints, modules):
     m_list = ", ".join(f'{x["name"]}(id:{x["id"]})' for x in members) or "无"
     s_list = ", ".join(f'{x["name"]}(id:{x["id"]}{"活跃" if x.get("is_active") else ""})' for x in sprints) or "无"
     mod_list = ", ".join(modules) if modules else "无"
-    return f"""你是 PL(技术主管)的需求拆解助手。用户描述迭代要做的事,你帮拆成具体需求。
+    return f"""你是 PL(技术主管)的分析助手。用户描述一个问题/需求,你帮深度拆解。
 现有团队成员:{m_list};迭代:{s_list};模块:{mod_list}。
-流程:先理解意图,必要时追问细化。需求明确时,在回复末尾用 ```json 返回需求数组,每条:{{title(必填), status(默认 backlog), priority(P0/P1/P2,默认 P1), module, est_effort(人时估算), assigned_sprint(迭代id), assignee(成员id)}}。"""
+分析框架:
+1. 先理解问题(现象+根因方向)
+2. 列出决策点(模型/算法/逻辑/数据/测试/前端/后端——哪些要改)
+3. 每个决策点给 2-3 候选方案+取舍,问用户选哪个
+4. 多轮确认后,产出 1 个父需求+N 个子任务
+子任务类型:模型/逻辑/数据/测试/文档/前端/后端/其他
+产出格式(分析充分后在回复末尾):
+```json
+{{"parent":{{"title":"..."}}, "children":[{{"title":"...","type":"模型","analysis":"..."}}]}}
+```
+不要急于产出,先分析、追问、确认。"""

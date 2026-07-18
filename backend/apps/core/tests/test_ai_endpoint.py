@@ -11,18 +11,18 @@ def client():
 
 @pytest.mark.django_db
 @patch("apps.core.views.chat_with_glm")
-def test_ai_chat_returns_reply_and_drafts(mock_glm, client):
-    mock_glm.return_value = '好的\n```json\n[{"title":"登录","est_effort":8}]\n```'
-    r = client.post("/api/ai/chat/", {"message": "做登录", "history": []}, format="json")
+def test_ai_chat_returns_parent_children(mock_glm, client):
+    mock_glm.return_value = '分析完成\n```json\n{"parent":{"title":"漏检优化"},"children":[{"title":"模型选型","type":"模型","analysis":"对比YOLOv8"}]}\n```'
+    r = client.post("/api/ai/chat/", {"message": "漏检", "history": []}, format="json")
     assert r.status_code == 200
-    assert "好的" in r.data["reply"]
-    assert len(r.data["drafts"]) == 1
-    assert r.data["drafts"][0]["title"] == "登录"
+    assert r.data["drafts"] is not None
+    assert r.data["drafts"]["parent"]["title"] == "漏检优化"
+    assert len(r.data["drafts"]["children"]) == 1
 
 @pytest.mark.django_db
 @patch("apps.core.views.chat_with_glm")
 def test_ai_chat_no_drafts(mock_glm, client):
-    mock_glm.return_value = "你想用手机号还是邮箱?"
-    r = client.post("/api/ai/chat/", {"message": "登录", "history": []}, format="json")
+    mock_glm.return_value = "你想用哪个模型?"
+    r = client.post("/api/ai/chat/", {"message": "漏检", "history": []}, format="json")
     assert r.status_code == 200
-    assert r.data["drafts"] == []
+    assert r.data["drafts"] is None
