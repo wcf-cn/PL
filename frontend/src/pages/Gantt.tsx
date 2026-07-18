@@ -152,9 +152,11 @@ export default function Gantt() {
   // 任务段(occupied)拉伸填满容器:空段窄标记占固定宽,剩余宽度均分给任务天;
   // 任务多到 BASE_DAY_W 都放不下时退回 BASE_DAY_W(横向滚动)
   const gapCount = segments.filter(s => s.type === 'gap').length
-  const occupiedDayCount = occupiedDays.size
-  const DAY_W = occupiedDayCount > 0 && containerWidth > 0
-    ? Math.max(BASE_DAY_W, Math.floor((containerWidth - gapCount * COLLAPSE_MARKER_WIDTH) / occupiedDayCount))
+  // 用 timeline 实际显示的天数(含 sprint-end 等小空天),不是任务覆盖天,
+  // 否则 timelineWidth = 显示天数×DAY_W 会略超容器变滚动,填不满
+  const visibleDayCount = segments.filter(s => s.type === 'expanded').reduce((sum, s) => sum + (s.endDay - s.startDay + 1), 0)
+  const DAY_W = visibleDayCount > 0 && containerWidth > 0
+    ? Math.max(BASE_DAY_W, Math.floor((containerWidth - gapCount * COLLAPSE_MARKER_WIDTH) / visibleDayCount))
     : BASE_DAY_W
 
   // Build dayToX mapping and total width
