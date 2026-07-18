@@ -78,9 +78,6 @@ export default function Gantt() {
   const maxDate = new Date(Math.max(...dates.map(d => d.getTime())))
   const totalDays = Math.ceil((maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24))
 
-  // Adaptive day width: stretch when few days, use base when many days
-  const DAY_W = totalDays * BASE_DAY_W < containerWidth ? Math.floor(containerWidth / totalDays) : BASE_DAY_W
-
   const position = (dateStr: string) => {
     const date = parseDate(dateStr)
     return Math.floor((date.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24))
@@ -152,6 +149,13 @@ export default function Gantt() {
 
   const segments = buildSegmentsWithExpansion()
   const hasGaps = buildSegments().some(s => s.type === 'gap')
+  // 任务段(occupied)拉伸填满容器:空段窄标记占固定宽,剩余宽度均分给任务天;
+  // 任务多到 BASE_DAY_W 都放不下时退回 BASE_DAY_W(横向滚动)
+  const gapCount = segments.filter(s => s.type === 'gap').length
+  const occupiedDayCount = occupiedDays.size
+  const DAY_W = occupiedDayCount > 0 && containerWidth > 0
+    ? Math.max(BASE_DAY_W, Math.floor((containerWidth - gapCount * COLLAPSE_MARKER_WIDTH) / occupiedDayCount))
+    : BASE_DAY_W
 
   // Build dayToX mapping and total width
   let cumulativeX = 0
