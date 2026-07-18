@@ -52,7 +52,7 @@ export default function Gantt() {
   }, [reqs])
 
   const validReqs = reqs.filter(r => r.planned_start && r.planned_end)
-  if (!validReqs.length) return <Card className="p-6"><CardContent className="text-sm text-muted-foreground">该迭代无计划日期的需求</CardContent></Card>
+  if (!validReqs.length) return <Card className="p-6"><CardContent className="text-sm text-muted-foreground">暂无有计划日期的需求。请在编辑需求时填写「计划开始/结束」。</CardContent></Card>
 
   // Parse dates consistently at midnight local time
   const parseDate = (d: string) => { const x = new Date(d); x.setHours(0,0,0,0); return x }
