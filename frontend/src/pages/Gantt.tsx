@@ -260,6 +260,7 @@ export default function Gantt() {
             className="border-b"
             style={{
               width: `${timelineWidth}px`,
+              minWidth: '100%',
               backgroundImage: `repeating-linear-gradient(to right, var(--border) 0, var(--border) 1px, transparent 1px, transparent ${DAY_W}px)`
             }}
           >
