@@ -102,3 +102,11 @@ export interface DraftResult {
   parent: { title: string }
   children: Array<{ title: string; type?: string; analysis?: string }>
 }
+
+export interface AIAction {
+  type: string
+  match?: Record<string, any>
+  fields?: Record<string, any>
+  params?: Record<string, any>
+  description?: string
+}
