@@ -7,8 +7,8 @@ GLM_API_KEY = os.environ.get("GLM_API_KEY", "")
 GLM_MODEL = os.environ.get("GLM_MODEL", "glm-5.1")
 FRONTEND_DIST = BASE_DIR.parent / 'frontend' / 'dist'
 SECRET_KEY = 'dev-insecure-change-me'  # 个人自用本地,生产再换
-DEBUG = True
-ALLOWED_HOSTS = ['*']  # 本地+Tailscale
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '*').split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin', 'django.contrib.auth', 'django.contrib.contenttypes',
