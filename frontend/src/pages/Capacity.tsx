@@ -71,28 +71,45 @@ export default function Capacity() {
     <Card>
       <CardHeader><CardTitle>产能分析</CardTitle></CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader><TableRow>
-            <TableHead>成员</TableHead>
-            <TableHead>周容量(h)</TableHead>
-            <TableHead>本周负载(h)</TableHead>
-            <TableHead>峰值周(h)</TableHead>
-            <TableHead>未排期(h)</TableHead>
-            <TableHead>本周利用率</TableHead>
-          </TableRow></TableHeader>
-          <TableBody>
-            {rows.map(r => (
-              <TableRow key={r.member_id}>
-                <TableCell className="font-medium">{r.member}</TableCell>
-                <TableCell>{r.capacity}</TableCell>
-                <TableCell>{r.currentWeekly}</TableCell>
-                <TableCell className={r.peakUtil > 1 ? 'text-red-600 font-medium' : ''}>{r.peakWeekly}</TableCell>
-                <TableCell className="text-muted-foreground">{r.unscheduled}</TableCell>
-                <TableCell>{badge(r.utilization)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        {/* 电脑:Table */}
+        <div className="hidden md:block">
+          <Table>
+            <TableHeader><TableRow>
+              <TableHead>成员</TableHead>
+              <TableHead>周容量(h)</TableHead>
+              <TableHead>本周负载(h)</TableHead>
+              <TableHead>峰值周(h)</TableHead>
+              <TableHead>未排期(h)</TableHead>
+              <TableHead>本周利用率</TableHead>
+            </TableRow></TableHeader>
+            <TableBody>
+              {rows.map(r => (
+                <TableRow key={r.member_id}>
+                  <TableCell className="font-medium">{r.member}</TableCell>
+                  <TableCell>{r.capacity}</TableCell>
+                  <TableCell>{r.currentWeekly}</TableCell>
+                  <TableCell className={r.peakUtil > 1 ? 'text-red-600 font-medium' : ''}>{r.peakWeekly}</TableCell>
+                  <TableCell className="text-muted-foreground">{r.unscheduled}</TableCell>
+                  <TableCell>{badge(r.utilization)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        {/* 手机:卡片 */}
+        <div className="md:hidden space-y-2">
+          {rows.map(r => (
+            <div key={r.member_id} className="border rounded-lg p-3 space-y-1">
+              <div className="flex justify-between items-center">
+                <span className="font-medium">{r.member}</span>
+                {badge(r.utilization)}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                容量{r.capacity}h · 本周{r.currentWeekly}h · 峰值{r.peakWeekly}h · 未排期{r.unscheduled}h
+              </div>
+            </div>
+          ))}
+        </div>
         <div className="mt-4 space-y-1 text-xs text-muted-foreground">
           <p>📊 <b>本周负载</b>:今天在 planned_start~end 范围内的需求,工时按天分摊后 ×5(工作日)</p>
           <p>📊 <b>峰值周</b>:所有日期中日负载最高的 ×5。红色=超容量</p>

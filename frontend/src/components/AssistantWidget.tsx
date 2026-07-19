@@ -67,18 +67,18 @@ export default function AssistantWidget() {
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="fixed bottom-6 right-6 z-50 rounded-full bg-primary text-primary-foreground w-14 h-14 shadow-lg text-sm font-bold hover:scale-105 transition-transform">AI</button>
+      <button onClick={() => setOpen(true)} className="fixed bottom-16 md:bottom-6 right-3 md:right-6 z-50 rounded-full bg-primary text-primary-foreground w-12 h-12 md:w-14 md:h-14 shadow-lg text-xs md:text-sm font-bold hover:scale-105 transition-transform">AI</button>
     )
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-96 max-h-[80vh] flex flex-col shadow-xl">
+    <div className="fixed z-50 flex flex-col shadow-xl bottom-0 right-0 w-full h-full md:bottom-6 md:right-6 md:w-96 md:max-h-[80vh] md:h-auto">
       <Card className="flex-1 flex flex-col overflow-hidden">
         <div className="flex justify-between items-center p-3 border-b bg-muted">
           <span className="font-semibold">AI 助手</span>
           <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>✕</Button>
         </div>
-        <div className="flex-1 overflow-y-auto p-3 space-y-2 max-h-60">
+        <div className="flex-1 overflow-y-auto p-3 space-y-2 md:max-h-60">
           {messages.length === 0 && <div className="text-sm text-muted-foreground">描述你的需求或直接操作...如"把登录接口分配给张三"、"AB门漏检分析"</div>}
           {messages.map((m, i) => (
             <div key={i} className={m.role === 'user' ? 'text-right' : ''}>

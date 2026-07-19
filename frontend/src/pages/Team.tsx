@@ -66,36 +66,58 @@ export default function Team() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>姓名</TableHead>
-                <TableHead>周容量(h)</TableHead>
-                <TableHead>模块</TableHead>
-                <TableHead>状态</TableHead>
-                <TableHead>操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {members.map(m => (
-                <TableRow key={m.id}>
-                  <TableCell className="font-medium">{m.name}</TableCell>
-                  <TableCell>{m.week_capacity}</TableCell>
-                  <TableCell>{m.modules || '-'}</TableCell>
-                  <TableCell>{m.active ? <Badge>在职</Badge> : <Badge variant="outline">离职</Badge>}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => openEdit(m)}>编辑</Button>
-                      <Button variant="destructive" size="sm" onClick={() => remove(m.id, m.name)}>删除</Button>
-                    </div>
-                  </TableCell>
+          {/* 电脑:Table */}
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>姓名</TableHead>
+                  <TableHead>周容量(h)</TableHead>
+                  <TableHead>模块</TableHead>
+                  <TableHead>状态</TableHead>
+                  <TableHead>操作</TableHead>
                 </TableRow>
-              ))}
-              {members.length === 0 && (
-                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">暂无成员,点「+ 添加成员」</TableCell></TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {members.map(m => (
+                  <TableRow key={m.id}>
+                    <TableCell className="font-medium">{m.name}</TableCell>
+                    <TableCell>{m.week_capacity}</TableCell>
+                    <TableCell>{m.modules || '-'}</TableCell>
+                    <TableCell>{m.active ? <Badge>在职</Badge> : <Badge variant="outline">离职</Badge>}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => openEdit(m)}>编辑</Button>
+                        <Button variant="destructive" size="sm" onClick={() => remove(m.id, m.name)}>删除</Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {members.length === 0 && (
+                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">暂无成员,点「+ 添加成员」</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          {/* 手机:卡片 */}
+          <div className="md:hidden space-y-2">
+            {members.map(m => (
+              <div key={m.id} className="border rounded-lg p-3">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <span className="font-medium">{m.name}</span>
+                    <span className="ml-2">{m.active ? <Badge>在职</Badge> : <Badge variant="outline">离职</Badge>}</span>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="outline" size="sm" onClick={() => openEdit(m)}>编辑</Button>
+                    <Button variant="destructive" size="sm" onClick={() => remove(m.id, m.name)}>删</Button>
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">周容量{m.week_capacity}h · {m.modules || '无模块'}</div>
+              </div>
+            ))}
+            {members.length === 0 && <div className="text-center text-muted-foreground text-sm">暂无成员</div>}
+          </div>
           {error && <div className="text-destructive text-sm mt-2">{error}</div>}
         </CardContent>
       </Card>
