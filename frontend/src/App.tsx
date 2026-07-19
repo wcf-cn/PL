@@ -9,9 +9,17 @@ import Burndown from './pages/Burndown'
 import Gantt from './pages/Gantt'
 import Team from './pages/Team'
 import { Button } from './components/ui/button'
-import { Tabs, TabsList, TabsTrigger } from './components/ui/tabs'
 import { cn } from './lib/utils'
 import AssistantWidget from './components/AssistantWidget'
+
+const NAV_ITEMS = [
+  { href: '#/board', label: '看板', icon: '📋' },
+  { href: '#/capacity', label: '产能', icon: '📊' },
+  { href: '#/schedule', label: '排期', icon: '📅' },
+  { href: '#/burndown', label: '燃尽', icon: '📉' },
+  { href: '#/gantt', label: '甘特', icon: '📊' },
+  { href: '#/team', label: '团队', icon: '👥' },
+]
 
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null)
@@ -20,9 +28,9 @@ export default function App() {
   return (
     <HashRouter>
       <div className="min-h-screen bg-background">
-        <div className="max-w-7xl mx-auto p-6">
-          <Nav authed={authed} onLogout={async()=>{await api.logout();setAuthed(false)}} />
-          <main>
+        <div className="max-w-7xl mx-auto p-3 md:p-6">
+          {authed && <TopNav onLogout={async()=>{await api.logout();setAuthed(false)}} />}
+          <main className="pb-16 md:pb-0">
             <Routes>
               {!authed ? <>
                 <Route path="*" element={<Login onOk={()=>setAuthed(true)} />} />
@@ -37,6 +45,7 @@ export default function App() {
               </>}
             </Routes>
           </main>
+          {authed && <BottomTabBar />}
           {authed && <AssistantWidget />}
         </div>
       </div>
@@ -44,47 +53,44 @@ export default function App() {
   )
 }
 
-function Nav({authed, onLogout}:{authed:boolean; onLogout:()=>void}) {
+function TopNav({ onLogout }:{ onLogout:()=>void }) {
   const location = useLocation()
   const path = location.pathname
-
-  if (!authed) return null
-
-  const navItems = [
-    { href: '#/board', label: '看板' },
-    { href: '#/capacity', label: '产能' },
-    { href: '#/schedule', label: '排期' },
-    { href: '#/burndown', label: '燃尽' },
-    { href: '#/gantt', label: '甘特' },
-    { href: '#/team', label: '团队' },
-  ]
-
   return (
-    <nav className="flex items-center justify-between mb-6 border-b pb-4">
+    <nav className="hidden md:flex items-center justify-between mb-6 border-b pb-4">
       <div className="flex items-center gap-6">
         <h1 className="text-xl font-bold">PL 看板</h1>
-        <Tabs value={path.replace('#/', '') || 'board'}>
-          <TabsList>
-            {navItems.map(item => (
-              <TabsTrigger
-                key={item.href}
-                value={item.href.replace('#/', '')}
-                asChild
-              >
-                <a href={item.href} className={cn(
-                  'px-4 py-2 text-sm font-medium transition-colors',
-                  path.replace('#/', '') === item.href.replace('#/', '')
-                    ? 'text-foreground bg-primary'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}>
-                  {item.label}
-                </a>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <div className="flex gap-1">
+          {NAV_ITEMS.map(item => (
+            <a key={item.href} href={item.href} className={cn(
+              'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+              path.includes(item.href.replace('#/', '')) ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+            )}>{item.label}</a>
+          ))}
+        </div>
       </div>
       <Button variant="ghost" onClick={onLogout}>登出</Button>
+    </nav>
+  )
+}
+
+function BottomTabBar() {
+  const location = useLocation()
+  const path = location.pathname
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-background border-t flex justify-around items-center md:hidden" style={{ height: 56 }}>
+      {NAV_ITEMS.map(item => {
+        const active = path.includes(item.href.replace('#/', ''))
+        return (
+          <a key={item.href} href={item.href} className={cn(
+            'flex flex-col items-center justify-center flex-1 h-full text-xs gap-0.5',
+            active ? 'text-primary font-medium' : 'text-muted-foreground'
+          )}>
+            <span className="text-base leading-none">{item.icon}</span>
+            <span>{item.label}</span>
+          </a>
+        )
+      })}
     </nav>
   )
 }
