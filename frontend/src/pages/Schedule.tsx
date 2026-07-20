@@ -37,15 +37,19 @@ export default function Schedule() {
                   {memberReqs.length === 0 ? (
                     <div className="text-sm text-muted-foreground">暂无在途需求</div>
                   ) : (
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       {memberReqs.map(r => (
-                        <div key={r.id} className="text-sm flex items-center gap-2 border-l-2 border-muted pl-2">
-                          <Badge variant="outline">{STATUS_LABEL[r.status]}</Badge>
-                          <span>{r.title}</span>
-                          <span className="text-muted-foreground">{r.est_effort}h</span>
-                          {(r.planned_start || r.planned_end) && (
-                            <span className="text-muted-foreground">{r.planned_start || '?'}~{r.planned_end || '?'}</span>
-                          )}
+                        <div key={r.id} className="text-sm border-l-2 border-muted pl-3 py-1">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="shrink-0">{STATUS_LABEL[r.status]}</Badge>
+                            <span className="font-medium truncate">{r.title}</span>
+                          </div>
+                          <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
+                            <span>{r.est_effort}h</span>
+                            {(r.planned_start || r.planned_end) && (
+                              <span>{r.planned_start || '?'} ~ {r.planned_end || '?'}</span>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
