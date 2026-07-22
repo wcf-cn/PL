@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { api } from '../api'
-import type { Requirement, Member } from '../types'
+import type { Requirement, Member, MemberSnapshot } from '../types'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#8dd1e1', '#d084fe', '#fab1a0']
@@ -9,78 +9,83 @@ const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#8dd1e1', '#d084fe'
 export default function Burndown() {
   const [reqs, setReqs] = useState<Requirement[]>([])
   const [members, setMembers] = useState<Member[]>([])
+  const [snapshots, setSnapshots] = useState<MemberSnapshot[]>([])
 
   useEffect(() => {
     api.requirements.list().then(setReqs)
     api.members.list().then(setMembers)
+    api.snapshots().then(setSnapshots)
   }, [])
 
-  const { chartData, todayDots, activeMembers, totals } = useMemo(() => {
+  const { chartData, activeMembers, totals, comparison } = useMemo(() => {
     const inFlight = reqs.filter(r => !['done', 'paused'].includes(r.status))
     const totalEst = inFlight.reduce((s, r) => s + r.est_effort, 0)
     const totalInv = inFlight.reduce((s, r) => s + r.actual_effort, 0)
     const totalRem = Math.max(0, totalEst - totalInv)
 
     const dated = inFlight.filter(r => r.planned_start && r.planned_end && r.assignee)
-    if (dated.length === 0) {
-      return { chartData: [], todayDots: [], activeMembers: [], totals: { est: totalEst, inv: totalInv, rem: totalRem } }
+    const activeMems = members.filter(m => m.active && inFlight.some(r => r.assignee === m.id))
+
+    if (dated.length === 0 && snapshots.length === 0) {
+      return { chartData: [], activeMembers: activeMems, totals: { est: totalEst, inv: totalInv, rem: totalRem }, comparison: [] }
     }
 
-    const activeMems = members.filter(m => m.active && dated.some(r => r.assignee === m.id))
-
-    const minDate = new Date(Math.min(...dated.map(r => new Date(r.planned_start!).getTime())))
+    // 理想线日期范围
+    const allDates = new Set<string>()
     const today = new Date(); today.setHours(0, 0, 0, 0)
     const todayStr = today.toISOString().split('T')[0]
-    const maxDate = new Date(Math.max(today.getTime(), ...dated.map(r => new Date(r.planned_end!).getTime())))
+    dated.forEach(r => {
+      allDates.add(r.planned_start!)
+      if (r.planned_end) allDates.add(r.planned_end!)
+    })
+    allDates.add(todayStr)
+    snapshots.forEach(s => allDates.add(s.date))
 
-    // 生成日期序列 + 每人理想线(虚线)
-    const data: Array<Record<string, number | string>> = []
-    for (let d = new Date(minDate); d <= maxDate; d.setDate(d.getDate() + 1)) {
-      const ds = d.toISOString().split('T')[0]
-      const row: Record<string, number | string> = { date: ds }
+    const sortedDates = Array.from(allDates).sort()
+
+    // 构建合并数据:每天的理想线值 + 快照实际值
+    const data = sortedDates.map(ds => {
+      const row: Record<string, number | string | null> = { date: ds }
+      const d = new Date(ds + 'T00:00:00')
+
       for (const m of activeMems) {
-        const myReqs = dated.filter(r => r.assignee === m.id)
-        // 理想线:按 planned_start~end 从 est 匀降到 0
-        const idealRemain = myReqs.reduce((s, r) => {
-          const start = new Date(r.planned_start!).getTime()
-          const end = new Date(r.planned_end!).getTime()
-          const now = d.getTime()
-          if (now <= start) return s + r.est_effort
-          if (now >= end) return s
-          const pct = (now - start) / (end - start)
-          return s + r.est_effort * (1 - pct)
-        }, 0)
-        row[`${m.name}_ideal`] = Math.round(idealRemain * 10) / 10
+        // 理想线(虚线)
+        const myDated = dated.filter(r => r.assignee === m.id)
+        if (myDated.length > 0) {
+          const idealRemain = myDated.reduce((s, r) => {
+            const start = new Date(r.planned_start!).getTime()
+            const end = new Date(r.planned_end!).getTime()
+            const now = d.getTime()
+            if (now <= start) return s + r.est_effort
+            if (now >= end) return s
+            return s + r.est_effort * (1 - (now - start) / (end - start))
+          }, 0)
+          row[`${m.name}_ideal`] = Math.round(idealRemain * 10) / 10
+        }
 
-        // 实际线:从 est(planned_start) 到 (est-actual)(今天),之后不设值
-        if (ds <= todayStr) {
-          const myInFlight = inFlight.filter(r => r.assignee === m.id && r.planned_start && r.planned_end)
-          if (myInFlight.length > 0) {
-            const myStart = Math.min(...myInFlight.map(r => new Date(r.planned_start!).getTime()))
-            const myTotal = myInFlight.reduce((s, r) => s + r.est_effort, 0)
-            const myActualRemain = myInFlight.reduce((s, r) => s + Math.max(0, r.est_effort - r.actual_effort), 0)
-            if (d.getTime() <= myStart) {
-              row[`${m.name}_actual`] = Math.round(myTotal * 10) / 10
-            } else {
-              const elapsed = today.getTime() > myStart ? (d.getTime() - myStart) / (today.getTime() - myStart) : 1
-              const clamped = Math.max(0, Math.min(1, elapsed))
-              row[`${m.name}_actual`] = Math.round((myTotal + (myActualRemain - myTotal) * clamped) * 10) / 10
-            }
-          }
+        // 实际线(快照)
+        const snap = snapshots.find(s => s.member_id === m.id && s.date === ds)
+        if (snap) {
+          row[m.name] = Math.round(snap.remaining_effort * 10) / 10
+        } else {
+          row[m.name] = null
         }
       }
-      data.push(row)
-    }
-
-    // 今天的实际剩余(圆点):est - actual
-    const dots = activeMems.map((m, i) => {
-      const myReqs = inFlight.filter(r => r.assignee === m.id)
-      const actualRemain = myReqs.reduce((s, r) => s + Math.max(0, r.est_effort - r.actual_effort), 0)
-      return { date: todayStr, value: Math.round(actualRemain * 10) / 10, color: COLORS[i % COLORS.length], name: m.name }
+      return row
     })
 
-    return { chartData: data, todayDots: dots, activeMembers: activeMems, totals: { est: totalEst, inv: totalInv, rem: totalRem } }
-  }, [reqs, members])
+    // 今天的对比(实际 vs 理想)
+    const comp = activeMems.map((m, i) => {
+      const myInFlight = inFlight.filter(r => r.assignee === m.id)
+      const actualRemain = myInFlight.reduce((s, r) => s + Math.max(0, r.est_effort - r.actual_effort), 0)
+      const todayIdeal = data.find(r => r.date === todayStr)
+      const idealVal = todayIdeal ? (todayIdeal[`${m.name}_ideal`] as number) : undefined
+      const diff = idealVal !== undefined ? actualRemain - idealVal : 0
+      return { name: m.name, color: COLORS[i % COLORS.length], actual: Math.round(actualRemain), ideal: idealVal !== undefined ? Math.round(idealVal) : undefined, diff: Math.round(diff) }
+    })
+
+    return { chartData: data, activeMembers: activeMems, totals: { est: totalEst, inv: totalInv, rem: totalRem }, comparison: comp }
+  }, [reqs, members, snapshots])
 
   if (reqs.length === 0) {
     return <Card><CardContent className="p-6 text-sm text-muted-foreground">暂无需求数据</CardContent></Card>
@@ -90,7 +95,7 @@ export default function Burndown() {
 
   return (
     <Card>
-      <CardHeader><CardTitle>工时燃尽(理想 vs 实际)</CardTitle></CardHeader>
+      <CardHeader><CardTitle>工时燃尽(真实快照 vs 理想)</CardTitle></CardHeader>
       <CardContent>
         <div className="flex flex-wrap gap-4 mb-4 text-sm">
           <span>在途总工时 <b>{totals.est}h</b></span>
@@ -108,62 +113,39 @@ export default function Burndown() {
               <Legend wrapperStyle={{ fontSize: 12 }} />
               <ReferenceLine x={todayStr} stroke="#ff4444" strokeWidth={2} label={{ value: '今天', position: 'top', fill: '#ff4444', fontSize: 11 }} />
               {activeMembers.map((m, i) => (
-                <>
-                  <Line
-                    key={`${m.id}_ideal`}
-                    type="monotone"
-                    dataKey={`${m.name}_ideal`}
-                    name={`${m.name}(理想)`}
-                    stroke={COLORS[i % COLORS.length]}
-                    strokeWidth={1.5}
-                    strokeDasharray="5 5"
-                    dot={false}
-                    connectNulls
-                  />
-                  <Line
-                    key={`${m.id}_actual`}
-                    type="monotone"
-                    dataKey={`${m.name}_actual`}
-                    name={`${m.name}(实际)`}
-                    stroke={COLORS[i % COLORS.length]}
-                    strokeWidth={2.5}
-                    dot={{ r: 3 }}
-                    connectNulls
-                  />
-                </>
+                <div key={m.id}>
+                  <Line type="monotone" dataKey={`${m.name}_ideal`} name={`${m.name}(理想)`}
+                    stroke={COLORS[i % COLORS.length]} strokeWidth={1.5} strokeDasharray="5 5" dot={false} connectNulls />
+                  <Line type="monotone" dataKey={m.name} name={`${m.name}(实际)`}
+                    stroke={COLORS[i % COLORS.length]} strokeWidth={2.5} dot={{ r: 3 }} connectNulls={false} />
+                </div>
               ))}
             </LineChart>
           </ResponsiveContainer>
         ) : (
           <div className="text-sm text-muted-foreground">在途需求没有计划日期或未分配负责人。</div>
         )}
-        {/* 今天的实际圆点(单独画在下方提示) */}
-        {todayDots.length > 0 && (
+        {comparison.length > 0 && (
           <div className="mt-3 p-3 bg-muted/50 rounded-lg">
-            <div className="text-sm font-medium mb-2">📍 今天实际剩余 vs 理想(按计划应该到)</div>
+            <div className="text-sm font-medium mb-2">📍 今天:实际剩余 vs 理想应到</div>
             <div className="space-y-1">
-              {todayDots.map(d => {
-                const idealPoint = chartData.find(r => r.date === d.date)?.[`${d.name}_ideal`] as number
-                const diff = idealPoint !== undefined ? d.value - idealPoint : 0
-                const status = diff > 1 ? '❌ 落后' : diff < -1 ? '✅ 超前' : '🟡 正常'
-                return (
-                  <div key={d.name} className="text-xs flex items-center gap-3">
-                    <span className="w-16 font-medium">{d.name}</span>
-                    <span>实际剩余 <b className="text-orange-600">{d.value}h</b></span>
-                    <span>理想应到 <b>{idealPoint !== undefined ? `${Math.round(idealPoint)}h` : '—'}</b></span>
-                    <span className={diff > 1 ? 'text-red-600 font-medium' : diff < -1 ? 'text-green-600 font-medium' : 'text-muted-foreground'}>
-                      {status}{diff > 1 ? ` (+${Math.round(diff)}h)` : diff < -1 ? ` (${Math.round(diff)}h)` : ''}
-                    </span>
-                  </div>
-                )
-              })}
+              {comparison.map(c => (
+                <div key={c.name} className="text-xs flex items-center gap-3">
+                  <span className="w-16 font-medium">{c.name}</span>
+                  <span>实际 <b className="text-orange-600">{c.actual}h</b></span>
+                  <span>理想应到 <b>{c.ideal !== undefined ? `${c.ideal}h` : '—'}</b></span>
+                  <span className={c.diff > 1 ? 'text-red-600 font-medium' : c.diff < -1 ? 'text-green-600 font-medium' : 'text-muted-foreground'}>
+                    {c.diff > 1 ? `❌ 落后 +${c.diff}h` : c.diff < -1 ? `✅ 超前 ${c.diff}h` : '🟡 正常'}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         )}
         <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-          <p>📊 虚线 = 理想进度(按 planned_start→end 匀速消耗)</p>
-          <p>📊 红线 = 今天。下方对比表:实际剩余 vs 理想应到 = 落后/超前</p>
-          <p>📊 不预测未来。实际剩余 = est_effort - actual_effort</p>
+          <p>📊 虚线 = 理想进度(planned_start→end 匀降);实线 = 真实快照(每天访问时自动记录 est-actual)</p>
+          <p>📊 实线 = 每日真实数据点,随着每天访问页面自动积累历史。线越高 = 剩余越多 = 进度慢</p>
+          <p>📊 红线 = 今天。点越多历史越长(需要每天打开燃尽页一次,自动记录)</p>
         </div>
       </CardContent>
     </Card>

@@ -103,6 +103,13 @@ export interface DraftResult {
   children: Array<{ title: string; type?: string; analysis?: string }>
 }
 
+export interface MemberSnapshot {
+  date: string
+  member_id: number
+  member: string
+  remaining_effort: number
+}
+
 export interface AIAction {
   type: string
   match?: Record<string, any>
