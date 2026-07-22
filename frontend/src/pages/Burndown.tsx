@@ -52,28 +52,21 @@ export default function Burndown() {
         }, 0)
         row[`${m.name}_ideal`] = Math.round(idealRemain * 10) / 10
 
-        // 实际线:从 est(planned_start) 到 (est-actual)(今天),之后 null
+        // 实际线:从 est(planned_start) 到 (est-actual)(今天),之后不设值
         if (ds <= todayStr) {
           const myInFlight = inFlight.filter(r => r.assignee === m.id && r.planned_start && r.planned_end)
-          if (myInFlight.length === 0) {
-            row[`${m.name}_actual`] = null as any
-          } else {
-            // 找此人最早的 planned_start
+          if (myInFlight.length > 0) {
             const myStart = Math.min(...myInFlight.map(r => new Date(r.planned_start!).getTime()))
             const myTotal = myInFlight.reduce((s, r) => s + r.est_effort, 0)
             const myActualRemain = myInFlight.reduce((s, r) => s + Math.max(0, r.est_effort - r.actual_effort), 0)
             if (d.getTime() <= myStart) {
-              // 开始前:满工时
               row[`${m.name}_actual`] = Math.round(myTotal * 10) / 10
             } else {
-              // 开始~今天:从 est 线性到 (est-actual)
-              const elapsed = (d.getTime() - myStart) / (today.getTime() - myStart)
+              const elapsed = today.getTime() > myStart ? (d.getTime() - myStart) / (today.getTime() - myStart) : 1
               const clamped = Math.max(0, Math.min(1, elapsed))
               row[`${m.name}_actual`] = Math.round((myTotal + (myActualRemain - myTotal) * clamped) * 10) / 10
             }
           }
-        } else {
-          row[`${m.name}_actual`] = null as any
         }
       }
       data.push(row)
@@ -134,8 +127,8 @@ export default function Burndown() {
                     name={`${m.name}(实际)`}
                     stroke={COLORS[i % COLORS.length]}
                     strokeWidth={2.5}
-                    dot={false}
-                    connectNulls={false}
+                    dot={{ r: 3 }}
+                    connectNulls
                   />
                 </>
               ))}
