@@ -15,36 +15,72 @@ export default function Burndown() {
     api.members.list().then(setMembers)
   }, [])
 
-  const { totalEffort, remaining, done, chartData, activeMembers } = useMemo(() => {
-    const total = reqs.reduce((s, r) => s + r.est_effort, 0)
+  const { totalEffort, invested, actualRemaining, chartData, activeMembers } = useMemo(() => {
     const inFlight = reqs.filter(r => !['done', 'paused'].includes(r.status))
-    const rem = inFlight.reduce((s, r) => s + r.est_effort, 0)
-    const dn = reqs.filter(r => r.status === 'done').reduce((s, r) => s + r.est_effort, 0)
+    const total = inFlight.reduce((s, r) => s + r.est_effort, 0)
+    const inv = inFlight.reduce((s, r) => s + r.actual_effort, 0)
+    const rem = total - inv
 
-    const dated = reqs.filter(r => r.planned_start && r.assignee)
-    if (dated.length === 0) return { totalEffort: total, remaining: rem, done: dn, chartData: [], activeMembers: [] }
+    const dated = inFlight.filter(r => r.planned_start && r.planned_end && r.assignee)
+    if (dated.length === 0) return { totalEffort: total, invested: inv, actualRemaining: rem, chartData: [], activeMembers: [] }
 
-    const activeMems = members.filter(m => m.active && reqs.some(r => r.assignee === m.id && r.planned_start))
+    const activeMems = members.filter(m => m.active && inFlight.some(r => r.assignee === m.id && r.planned_start))
 
     const minDate = new Date(Math.min(...dated.map(r => new Date(r.planned_start!).getTime())))
     const today = new Date(); today.setHours(0, 0, 0, 0)
     const maxDate = new Date(Math.max(today.getTime(), ...dated.map(r => new Date(r.planned_end || r.planned_start!).getTime())))
 
-    // 每天每人的剩余工时
+    // 理想线:每人从总量均匀消耗到0(按 planned_start~end)
+    // 实际线:今天处 = est - actual(实际剩余);过去=估算;未来=理想
     const data: Array<Record<string, number | string>> = []
+    const todayStr = today.toISOString().split('T')[0]
+
     for (let d = new Date(minDate); d <= maxDate; d.setDate(d.getDate() + 1)) {
       const ds = d.toISOString().split('T')[0]
+      const isPast = ds < todayStr
+      const isToday = ds === todayStr
       const row: Record<string, number | string> = { date: ds }
+
       for (const m of activeMems) {
-        const remain = reqs
-          .filter(r => r.assignee === m.id && r.status !== 'paused' && (!r.planned_end || r.planned_end >= ds))
-          .reduce((s, r) => s + r.est_effort, 0)
-        row[m.name] = Math.round(remain * 10) / 10
+        const myReqs = inFlight.filter(r => r.assignee === m.id && r.planned_start && r.planned_end)
+        if (myReqs.length === 0) { row[m.name] = 0; continue }
+
+        if (isPast) {
+          // 过去:按计划进度算(理想线)
+          const plannedRemain = myReqs.reduce((s, r) => {
+            const start = new Date(r.planned_start!).getTime()
+            const end = new Date(r.planned_end!).getTime()
+            const now = d.getTime()
+            if (now <= start) return s + r.est_effort
+            if (now >= end) return s
+            const pct = (now - start) / (end - start)
+            return s + r.est_effort * (1 - pct)
+          }, 0)
+          row[m.name] = Math.round(plannedRemain * 10) / 10
+        } else {
+          // 今天及未来:用实际剩余(est - actual),之后按理想消耗到0
+          if (isToday) {
+            const actualRemain = myReqs.reduce((s, r) => s + (r.est_effort - r.actual_effort), 0)
+            row[m.name] = Math.round(actualRemain * 10) / 10
+          } else {
+            // 未来:从今天的实际剩余,按日期均匀消耗到最晚 planned_end
+            const actualRemain = myReqs.reduce((s, r) => s + (r.est_effort - r.actual_effort), 0)
+            const latestEnd = Math.max(...myReqs.map(r => new Date(r.planned_end!).getTime()))
+            const totalSpan = latestEnd - today.getTime()
+            const elapsed = d.getTime() - today.getTime()
+            if (totalSpan <= 0 || elapsed >= totalSpan) {
+              row[m.name] = 0
+            } else {
+              const pct = elapsed / totalSpan
+              row[m.name] = Math.round(actualRemain * (1 - pct) * 10) / 10
+            }
+          }
+        }
       }
       data.push(row)
     }
 
-    return { totalEffort: total, remaining: rem, done: dn, chartData: data, activeMembers: activeMems }
+    return { totalEffort: total, invested: inv, actualRemaining: rem, chartData: data, activeMembers: activeMems }
   }, [reqs, members])
 
   if (reqs.length === 0) {
@@ -52,16 +88,17 @@ export default function Burndown() {
   }
 
   const todayStr = new Date().toISOString().split('T')[0]
+  const completionRate = totalEffort > 0 ? ((invested / totalEffort) * 100).toFixed(0) : 0
 
   return (
     <Card>
-      <CardHeader><CardTitle>每人燃尽(剩余工时趋势)</CardTitle></CardHeader>
+      <CardHeader><CardTitle>每人燃尽(实际剩余工时)</CardTitle></CardHeader>
       <CardContent>
         <div className="flex flex-wrap gap-4 mb-4 text-sm">
-          <span>总工时 <b>{totalEffort}h</b></span>
-          <span>已上线 <b className="text-green-600">{done}h</b></span>
-          <span>剩余 <b className="text-orange-600">{remaining}h</b></span>
-          <span>完成率 <b>{totalEffort > 0 ? ((done / totalEffort) * 100).toFixed(0) : 0}%</b></span>
+          <span>在途总工时 <b>{totalEffort}h</b></span>
+          <span>已投入 <b className="text-blue-600">{invested}h</b></span>
+          <span>实际剩余 <b className="text-orange-600">{actualRemaining}h</b></span>
+          <span>完成率 <b>{completionRate}%</b></span>
         </div>
         {chartData.length > 0 && activeMembers.length > 0 ? (
           <ResponsiveContainer width="100%" height={350}>
@@ -78,11 +115,13 @@ export default function Burndown() {
             </LineChart>
           </ResponsiveContainer>
         ) : (
-          <div className="text-sm text-muted-foreground">需求没有计划日期或未分配负责人,无法画趋势。请在编辑需求时填写「计划开始/结束」+ 分配负责人。</div>
+          <div className="text-sm text-muted-foreground">在途需求没有计划日期或未分配负责人,无法画趋势。</div>
         )}
-        <p className="text-xs text-muted-foreground mt-2">
-          每条线 = 一个成员的剩余工时(未到 planned_end 的需求工时之和)。线上升=新需求排进来了;线下降=需求计划完成了。红色竖线=今天。点图例可隐藏/显示某人的线。
-        </p>
+        <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+          <p>📊 纵轴 = 剩余工时(est_effort - actual_effort,每人在途需求)</p>
+          <p>📊 红线左边(过去)= 按计划日期的理想进度;红线处(今天)= 实际剩余;红线右边(未来)= 从实际剩余按计划消耗到 0</p>
+          <p>📊 线在红线处突然下降 = 实际投入比计划慢(落后);线高于过去段 = 需求增加了</p>
+        </div>
       </CardContent>
     </Card>
   )
