@@ -11,7 +11,7 @@ echo "=== PL Board 部署 ==="
 
 # 1. 系统依赖
 echo "[1/6] 安装系统依赖..."
-sudo apt update -qq && sudo apt install -y -qq python3 python3-venu nginx git curl > /dev/null
+sudo apt update -qq && sudo apt install -y -qq python3 python3-venv nginx git curl > /dev/null
 
 # Node 20
 if ! command -v node &> /dev/null || [ "$(node -v | cut -d. -f1 | tr -d v)" -lt 20 ]; then
