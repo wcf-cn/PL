@@ -1,10 +1,10 @@
 import { useEffect, useState, useMemo } from 'react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { api } from '../api'
 import type { Requirement, Member } from '../types'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 
-const COLORS = { est: '#8884d8', invested: '#82ca9d', remaining: '#ffc658' }
+const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#8dd1e1', '#d084fe', '#fab1a0']
 
 export default function Burndown() {
   const [reqs, setReqs] = useState<Requirement[]>([])
@@ -15,59 +15,125 @@ export default function Burndown() {
     api.members.list().then(setMembers)
   }, [])
 
-  const { chartData, totals } = useMemo(() => {
+  const { chartData, todayDots, activeMembers, totals } = useMemo(() => {
     const inFlight = reqs.filter(r => !['done', 'paused'].includes(r.status))
-    const activeMems = members.filter(m => m.active && inFlight.some(r => r.assignee === m.id))
+    const totalEst = inFlight.reduce((s, r) => s + r.est_effort, 0)
+    const totalInv = inFlight.reduce((s, r) => s + r.actual_effort, 0)
+    const totalRem = Math.max(0, totalEst - totalInv)
 
-    const data = activeMems.map(m => {
+    const dated = inFlight.filter(r => r.planned_start && r.planned_end && r.assignee)
+    if (dated.length === 0) {
+      return { chartData: [], todayDots: [], activeMembers: [], totals: { est: totalEst, inv: totalInv, rem: totalRem } }
+    }
+
+    const activeMems = members.filter(m => m.active && dated.some(r => r.assignee === m.id))
+
+    const minDate = new Date(Math.min(...dated.map(r => new Date(r.planned_start!).getTime())))
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const maxDate = new Date(Math.max(today.getTime(), ...dated.map(r => new Date(r.planned_end!).getTime())))
+
+    // 生成日期序列 + 每人理想线(虚线)
+    const data: Array<Record<string, number | string>> = []
+    for (let d = new Date(minDate); d <= maxDate; d.setDate(d.getDate() + 1)) {
+      const ds = d.toISOString().split('T')[0]
+      const row: Record<string, number | string> = { date: ds }
+      for (const m of activeMems) {
+        const myReqs = dated.filter(r => r.assignee === m.id)
+        // 理想线:按 planned_start~end 从 est 匀降到 0
+        const idealRemain = myReqs.reduce((s, r) => {
+          const start = new Date(r.planned_start!).getTime()
+          const end = new Date(r.planned_end!).getTime()
+          const now = d.getTime()
+          if (now <= start) return s + r.est_effort
+          if (now >= end) return s
+          const pct = (now - start) / (end - start)
+          return s + r.est_effort * (1 - pct)
+        }, 0)
+        row[`${m.name}_ideal`] = Math.round(idealRemain * 10) / 10
+      }
+      data.push(row)
+    }
+
+    // 今天的实际剩余(圆点):est - actual
+    const todayStr = today.toISOString().split('T')[0]
+    const dots = activeMems.map((m, i) => {
       const myReqs = inFlight.filter(r => r.assignee === m.id)
-      const est = myReqs.reduce((s, r) => s + r.est_effort, 0)
-      const invested = myReqs.reduce((s, r) => s + r.actual_effort, 0)
-      const remaining = Math.max(0, est - invested)
-      return { name: m.name, 预计: Math.round(est), 已投入: Math.round(invested), 剩余: Math.round(remaining) }
+      const actualRemain = myReqs.reduce((s, r) => s + Math.max(0, r.est_effort - r.actual_effort), 0)
+      return { date: todayStr, value: Math.round(actualRemain * 10) / 10, color: COLORS[i % COLORS.length], name: m.name }
     })
 
-    const totalEst = data.reduce((s, d) => s + d.预计, 0)
-    const totalInv = data.reduce((s, d) => s + d.已投入, 0)
-    const totalRem = data.reduce((s, d) => s + d.剩余, 0)
-
-    return { chartData: data, totals: { est: totalEst, inv: totalInv, rem: totalRem } }
+    return { chartData: data, todayDots: dots, activeMembers: activeMems, totals: { est: totalEst, inv: totalInv, rem: totalRem } }
   }, [reqs, members])
 
   if (reqs.length === 0) {
     return <Card><CardContent className="p-6 text-sm text-muted-foreground">暂无需求数据</CardContent></Card>
   }
 
+  const todayStr = new Date().toISOString().split('T')[0]
+
   return (
     <Card>
-      <CardHeader><CardTitle>工时总览(每人实际进度)</CardTitle></CardHeader>
+      <CardHeader><CardTitle>工时燃尽(理想 vs 实际)</CardTitle></CardHeader>
       <CardContent>
         <div className="flex flex-wrap gap-4 mb-4 text-sm">
           <span>在途总工时 <b>{totals.est}h</b></span>
           <span>已投入 <b className="text-green-600">{totals.inv}h</b></span>
-          <span>剩余 <b className="text-orange-600">{totals.rem}h</b></span>
+          <span>实际剩余 <b className="text-orange-600">{totals.rem}h</b></span>
           <span>完成率 <b>{totals.est > 0 ? ((totals.inv / totals.est) * 100).toFixed(0) : 0}%</b></span>
         </div>
-        {chartData.length > 0 ? (
+        {chartData.length > 0 && activeMembers.length > 0 ? (
           <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={chartData}>
+            <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-              <YAxis label={{ value: '工时(h)', angle: -90, position: 'insideLeft', fontSize: 12 }} tick={{ fontSize: 12 }} />
+              <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" minTickGap={50} />
+              <YAxis label={{ value: '剩余工时(h)', angle: -90, position: 'insideLeft', fontSize: 12 }} tick={{ fontSize: 12 }} />
               <Tooltip labelStyle={{ fontSize: 12 }} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="预计" fill={COLORS.est} radius={[4, 4, 0, 0]} />
-              <Bar dataKey="已投入" fill={COLORS.invested} radius={[4, 4, 0, 0]} />
-              <Bar dataKey="剩余" fill={COLORS.remaining} radius={[4, 4, 0, 0]} />
-            </BarChart>
+              <ReferenceLine x={todayStr} stroke="#ff4444" strokeWidth={2} label={{ value: '今天', position: 'top', fill: '#ff4444', fontSize: 11 }} />
+              {activeMembers.map((m, i) => (
+                <Line
+                  key={m.id}
+                  type="monotone"
+                  dataKey={`${m.name}_ideal`}
+                  name={`${m.name}(理想)`}
+                  stroke={COLORS[i % COLORS.length]}
+                  strokeWidth={1.5}
+                  strokeDasharray="5 5"
+                  dot={false}
+                />
+              ))}
+            </LineChart>
           </ResponsiveContainer>
         ) : (
-          <div className="text-sm text-muted-foreground">没有在途需求(或需求未分配负责人)。</div>
+          <div className="text-sm text-muted-foreground">在途需求没有计划日期或未分配负责人。</div>
+        )}
+        {/* 今天的实际圆点(单独画在下方提示) */}
+        {todayDots.length > 0 && (
+          <div className="mt-3 p-3 bg-muted/50 rounded-lg">
+            <div className="text-sm font-medium mb-2">📍 今天实际剩余 vs 理想(按计划应该到)</div>
+            <div className="space-y-1">
+              {todayDots.map(d => {
+                const idealPoint = chartData.find(r => r.date === d.date)?.[`${d.name}_ideal`] as number
+                const diff = idealPoint !== undefined ? d.value - idealPoint : 0
+                const status = diff > 1 ? '❌ 落后' : diff < -1 ? '✅ 超前' : '🟡 正常'
+                return (
+                  <div key={d.name} className="text-xs flex items-center gap-3">
+                    <span className="w-16 font-medium">{d.name}</span>
+                    <span>实际剩余 <b className="text-orange-600">{d.value}h</b></span>
+                    <span>理想应到 <b>{idealPoint !== undefined ? `${Math.round(idealPoint)}h` : '—'}</b></span>
+                    <span className={diff > 1 ? 'text-red-600 font-medium' : diff < -1 ? 'text-green-600 font-medium' : 'text-muted-foreground'}>
+                      {status}{diff > 1 ? ` (+${Math.round(diff)}h)` : diff < -1 ? ` (${Math.round(diff)}h)` : ''}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         )}
         <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-          <p>📊 每人 3 根柱:紫=预计总工时,绿=已投入,黄=剩余(预计-已投入)</p>
-          <p>📊 绿柱越接近紫柱 = 进度越好;黄柱高 = 还有不少活要做</p>
-          <p>📊 只统计在途需求(排除已上线/暂停)。已投入 = actual_effort,在编辑需求里填</p>
+          <p>📊 虚线 = 理想进度(按 planned_start→end 匀速消耗)</p>
+          <p>📊 红线 = 今天。下方对比表:实际剩余 vs 理想应到 = 落后/超前</p>
+          <p>📊 不预测未来。实际剩余 = est_effort - actual_effort</p>
         </div>
       </CardContent>
     </Card>
