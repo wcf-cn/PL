@@ -30,6 +30,7 @@ export default function Burndown() {
 
     const minDate = new Date(Math.min(...dated.map(r => new Date(r.planned_start!).getTime())))
     const today = new Date(); today.setHours(0, 0, 0, 0)
+    const todayStr = today.toISOString().split('T')[0]
     const maxDate = new Date(Math.max(today.getTime(), ...dated.map(r => new Date(r.planned_end!).getTime())))
 
     // 生成日期序列 + 每人理想线(虚线)
@@ -50,12 +51,35 @@ export default function Burndown() {
           return s + r.est_effort * (1 - pct)
         }, 0)
         row[`${m.name}_ideal`] = Math.round(idealRemain * 10) / 10
+
+        // 实际线:从 est(planned_start) 到 (est-actual)(今天),之后 null
+        if (ds <= todayStr) {
+          const myInFlight = inFlight.filter(r => r.assignee === m.id && r.planned_start && r.planned_end)
+          if (myInFlight.length === 0) {
+            row[`${m.name}_actual`] = null as any
+          } else {
+            // 找此人最早的 planned_start
+            const myStart = Math.min(...myInFlight.map(r => new Date(r.planned_start!).getTime()))
+            const myTotal = myInFlight.reduce((s, r) => s + r.est_effort, 0)
+            const myActualRemain = myInFlight.reduce((s, r) => s + Math.max(0, r.est_effort - r.actual_effort), 0)
+            if (d.getTime() <= myStart) {
+              // 开始前:满工时
+              row[`${m.name}_actual`] = Math.round(myTotal * 10) / 10
+            } else {
+              // 开始~今天:从 est 线性到 (est-actual)
+              const elapsed = (d.getTime() - myStart) / (today.getTime() - myStart)
+              const clamped = Math.max(0, Math.min(1, elapsed))
+              row[`${m.name}_actual`] = Math.round((myTotal + (myActualRemain - myTotal) * clamped) * 10) / 10
+            }
+          }
+        } else {
+          row[`${m.name}_actual`] = null as any
+        }
       }
       data.push(row)
     }
 
     // 今天的实际剩余(圆点):est - actual
-    const todayStr = today.toISOString().split('T')[0]
     const dots = activeMems.map((m, i) => {
       const myReqs = inFlight.filter(r => r.assignee === m.id)
       const actualRemain = myReqs.reduce((s, r) => s + Math.max(0, r.est_effort - r.actual_effort), 0)
@@ -91,16 +115,29 @@ export default function Burndown() {
               <Legend wrapperStyle={{ fontSize: 12 }} />
               <ReferenceLine x={todayStr} stroke="#ff4444" strokeWidth={2} label={{ value: '今天', position: 'top', fill: '#ff4444', fontSize: 11 }} />
               {activeMembers.map((m, i) => (
-                <Line
-                  key={m.id}
-                  type="monotone"
-                  dataKey={`${m.name}_ideal`}
-                  name={`${m.name}(理想)`}
-                  stroke={COLORS[i % COLORS.length]}
-                  strokeWidth={1.5}
-                  strokeDasharray="5 5"
-                  dot={false}
-                />
+                <>
+                  <Line
+                    key={`${m.id}_ideal`}
+                    type="monotone"
+                    dataKey={`${m.name}_ideal`}
+                    name={`${m.name}(理想)`}
+                    stroke={COLORS[i % COLORS.length]}
+                    strokeWidth={1.5}
+                    strokeDasharray="5 5"
+                    dot={false}
+                    connectNulls
+                  />
+                  <Line
+                    key={`${m.id}_actual`}
+                    type="monotone"
+                    dataKey={`${m.name}_actual`}
+                    name={`${m.name}(实际)`}
+                    stroke={COLORS[i % COLORS.length]}
+                    strokeWidth={2.5}
+                    dot={false}
+                    connectNulls={false}
+                  />
+                </>
               ))}
             </LineChart>
           </ResponsiveContainer>
