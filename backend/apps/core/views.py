@@ -6,7 +6,7 @@ from django.contrib.auth import authenticate, login as django_login, logout as d
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.db import models
-from .models import Member, Sprint, Requirement, Milestone, BurndownSnapshot
+from .models import Member, Sprint, Requirement, Milestone, BurndownSnapshot, MemberDailySnapshot
 from .serializers import MemberSerializer, SprintSerializer, RequirementSerializer, MilestoneSerializer
 from . import capacity
 from .ai import chat_with_glm, parse_drafts, strip_json_block, build_system_prompt, parse_actions, strip_actions_block
@@ -149,3 +149,21 @@ def ai_chat(request):
 def ai_execute(request):
     result = execute_action(request.data)
     return Response(result)
+
+@api_view(["GET"])
+def snapshots_view(request):
+    today = timezone.now().date()
+    members = Member.objects.filter(active=True)
+    for m in members:
+        reqs = Requirement.objects.filter(assignee=m).exclude(status__in=['done', 'paused'])
+        remaining = sum(max(0, r.est_effort - r.actual_effort) for r in reqs)
+        MemberDailySnapshot.objects.get_or_create(
+            date=today, member=m, defaults={'remaining_effort': remaining}
+        )
+    snaps = MemberDailySnapshot.objects.select_related('member').all()
+    return Response([{
+        'date': s.date.isoformat(),
+        'member_id': s.member_id,
+        'member': s.member.name,
+        'remaining_effort': s.remaining_effort,
+    } for s in snaps])

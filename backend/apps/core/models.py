@@ -108,3 +108,19 @@ class Milestone(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class MemberDailySnapshot(models.Model):
+    date = models.DateField('日期')
+    member = models.ForeignKey(Member, on_delete=models.CASCADE, verbose_name='成员')
+    remaining_effort = models.FloatField('剩余工时(h)', default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('date', 'member')
+        ordering = ['-date']
+        verbose_name = '每日工时快照'
+        verbose_name_plural = '每日工时快照'
+
+    def __str__(self):
+        return f'{self.member.name} {self.date} 剩余{self.remaining_effort}h'
