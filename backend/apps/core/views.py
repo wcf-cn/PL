@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from django.contrib.auth import authenticate, login as django_login, logout as django_logout
 from django.utils import timezone
+from django.db.models import Count
 from .models import Member, Requirement, Milestone, MemberDailySnapshot
 from .serializers import MemberSerializer, RequirementSerializer, MilestoneSerializer
 from .ai import chat_with_glm, parse_drafts, strip_json_block, build_system_prompt, parse_actions, strip_actions_block
@@ -82,9 +83,12 @@ def snapshots_view(request):
     today = timezone.now().date()
     members = Member.objects.filter(active=True)
     for m in members:
-        reqs = Requirement.objects.filter(assignee=m).exclude(status__in=['done', 'paused'])
+        # A1: 只算叶子需求(无子任务),避免父子 double-count
+        reqs = Requirement.objects.filter(assignee=m).exclude(status__in=['done', 'paused']) \
+            .annotate(nc=Count('children')).filter(nc=0)
         remaining = sum(max(0, r.est_effort - r.actual_effort) for r in reqs)
-        MemberDailySnapshot.objects.get_or_create(
+        # A3: 当天多次访问刷新(update_or_create),不再 get_or_create 锁定
+        MemberDailySnapshot.objects.update_or_create(
             date=today, member=m, defaults={'remaining_effort': remaining}
         )
     snaps = MemberDailySnapshot.objects.select_related('member').all()
