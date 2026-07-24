@@ -9,6 +9,7 @@ import Burndown from './pages/Burndown'
 import Gantt from './pages/Gantt'
 import Team from './pages/Team'
 import Versions from './pages/Versions'
+import Roadmap from './pages/Roadmap'
 import Focus from './pages/Focus'
 import Estimation from './pages/Estimation'
 import Performance from './pages/Performance'
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { href: '#/burndown', label: '燃尽', icon: '📉' },
   { href: '#/gantt', label: '甘特', icon: '📊' },
   { href: '#/versions', label: '版本', icon: '🏷️' },
+  { href: '#/roadmap', label: '路线', icon: '🛣️' },
   { href: '#/focus', label: '聚焦', icon: '🚨' },
   { href: '#/estimation', label: '估时', icon: '🎯' },
   { href: '#/performance', label: '效能', icon: '📈' },
@@ -49,6 +51,7 @@ export default function App() {
                 <Route path="/burndown" element={<Burndown />} />
                 <Route path="/gantt" element={<Gantt />} />
                 <Route path="/versions" element={<Versions />} />
+                <Route path="/roadmap" element={<Roadmap />} />
                 <Route path="/focus" element={<Focus />} />
                 <Route path="/estimation" element={<Estimation />} />
                 <Route path="/performance" element={<Performance />} />
