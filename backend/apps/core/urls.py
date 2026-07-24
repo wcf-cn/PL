@@ -1,11 +1,12 @@
 from rest_framework.routers import DefaultRouter
 from django.urls import path
-from .views import MemberViewSet, RequirementViewSet, MilestoneViewSet, login_view, logout_view, me_view, ai_chat, ai_execute, snapshots_view
+from .views import MemberViewSet, RequirementViewSet, MilestoneViewSet, VersionViewSet, login_view, logout_view, me_view, ai_chat, ai_execute, snapshots_view
 
 router = DefaultRouter()
 router.register('members', MemberViewSet)
 router.register('requirements', RequirementViewSet)
 router.register('milestones', MilestoneViewSet)
+router.register('versions', VersionViewSet)
 
 urlpatterns = router.urls + [
     path('auth/login', login_view),

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Member, Requirement, Milestone
+from .models import Member, Requirement, Milestone, Version
 
 @admin.register(Member)
 class MemberAdmin(admin.ModelAdmin):
@@ -9,10 +9,16 @@ class MemberAdmin(admin.ModelAdmin):
 
 @admin.register(Requirement)
 class RequirementAdmin(admin.ModelAdmin):
-    list_display = ('title', 'status', 'priority', 'assignee', 'module', 'est_effort', 'progress')
-    list_filter = ('status', 'priority', 'module')
+    list_display = ('title', 'status', 'priority', 'assignee', 'module', 'est_effort', 'progress', 'version')
+    list_filter = ('status', 'priority', 'module', 'version')
     search_fields = ('title', 'note')
     list_editable = ('status', 'priority', 'progress')
+
+@admin.register(Version)
+class VersionAdmin(admin.ModelAdmin):
+    list_display = ('name', 'integration_date', 'freeze_date', 'test_date', 'release_date')
+    list_filter = ()
+    search_fields = ('name', 'note')
 
 @admin.register(Milestone)
 class MilestoneAdmin(admin.ModelAdmin):

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Member, Requirement, Milestone
+from .models import Member, Requirement, Milestone, Version
 
 class MemberSerializer(serializers.ModelSerializer):
     class Meta:
@@ -8,8 +8,15 @@ class MemberSerializer(serializers.ModelSerializer):
 
 class RequirementSerializer(serializers.ModelSerializer):
     assignee_name = serializers.CharField(source='assignee.name', read_only=True)
+    version_name = serializers.CharField(source='version.name', read_only=True, default='')
     class Meta:
         model = Requirement
+        fields = '__all__'
+
+class VersionSerializer(serializers.ModelSerializer):
+    current_phase = serializers.CharField(read_only=True)
+    class Meta:
+        model = Version
         fields = '__all__'
 
 class MilestoneSerializer(serializers.ModelSerializer):

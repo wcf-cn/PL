@@ -5,8 +5,8 @@ from rest_framework.permissions import AllowAny
 from django.contrib.auth import authenticate, login as django_login, logout as django_logout
 from django.utils import timezone
 from django.db.models import Count
-from .models import Member, Requirement, Milestone, MemberDailySnapshot
-from .serializers import MemberSerializer, RequirementSerializer, MilestoneSerializer
+from .models import Member, Requirement, Milestone, MemberDailySnapshot, Version
+from .serializers import MemberSerializer, RequirementSerializer, MilestoneSerializer, VersionSerializer
 from .ai import chat_with_glm, parse_drafts, strip_json_block, build_system_prompt, parse_actions, strip_actions_block
 from .ai_actions import execute_action
 
@@ -34,6 +34,10 @@ class MilestoneViewSet(viewsets.ModelViewSet):
         if requirement_id:
             qs = qs.filter(requirement_id=requirement_id)
         return qs
+
+class VersionViewSet(viewsets.ModelViewSet):
+    queryset = Version.objects.all()
+    serializer_class = VersionSerializer
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
