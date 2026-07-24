@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
-import { STATUS_LABEL, STATUS_ORDER, type Requirement, type Status, type Member, type Priority, type Version, type Kind } from '../types'
+import { STATUS_LABEL, STATUS_ORDER, type Requirement, type Status, type Member, type Priority, type Version, type Kind, type TimeEntry } from '../types'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
@@ -36,6 +36,10 @@ export default function Board() {
   const [mtitle, setMTitle] = useState('')
   const [mdate, setMDate] = useState('')
   const [mnote, setMNote] = useState('')
+  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
+  const [teHours, setTeHours] = useState('')
+  const [teDate, setTeDate] = useState('')
+  const [teNote, setTeNote] = useState('')
   const [error, setError] = useState('')
   const [showDone, setShowDone] = useState(false)
   const [selectMode, setSelectMode] = useState(false)
@@ -61,6 +65,15 @@ export default function Board() {
     }
   }
 
+  const loadTimeEntries = async (reqId: number) => {
+    try {
+      const data = await api.timeEntries.list({ requirement: String(reqId) })
+      setTimeEntries(data)
+    } catch {
+      setTimeEntries([])
+    }
+  }
+
   const startEdit = (item: Requirement) => {
     setEditingId(item.id)
     setForm({
@@ -80,15 +93,18 @@ export default function Board() {
     })
     setShowForm(true)
     loadMilestones(item.id)
+    loadTimeEntries(item.id)
   }
 
   const closeForm = () => {
     setShowForm(false)
     setEditingId(null)
     setMilestones([])
+    setTimeEntries([])
     setError('')
     setForm({ title: '', status: 'backlog', priority: 'P1', kind: 'feature', assignee: null, module: '', est_effort: '', actual_effort: '', progress: 0, planned_start: '', planned_end: '', version: null, blockedBy: [] })
     setMTitle(''); setMDate(''); setMNote('')
+    setTeHours(''); setTeDate(''); setTeNote('')
   }
 
   const deleteReq = async () => {
@@ -208,6 +224,19 @@ export default function Board() {
       loadMilestones(editingId)
     } catch {
       setError('添加里程碑失败')
+    }
+  }
+
+  const addTimeEntry = async () => {
+    if (!editingId) return
+    if (!teHours.trim() || !teDate) return
+    try {
+      await api.timeEntries.create({ requirement: editingId, hours: Number(teHours), date: teDate, note: teNote })
+      setTeHours(''); setTeDate(''); setTeNote('')
+      loadTimeEntries(editingId)
+      load() // Reload requirements to show updated actual_effort
+    } catch {
+      setError('添加工时记录失败')
     }
   }
 
@@ -473,6 +502,44 @@ export default function Board() {
                           className="flex-1"
                         />
                         <Button type="button" onClick={addMilestone} size="sm">添加</Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+                  <div className="space-y-3">
+                    <div className="font-medium">工时记录 ({timeEntries.length})</div>
+                    <div className="space-y-2">
+                      {timeEntries.map(te => (
+                        <Card key={te.id}>
+                          <CardContent className="p-3">
+                            <div className="font-medium">+{te.hours}h</div>
+                            <div className="text-sm text-muted-foreground">{te.date || '无日期'} {te.note && `- ${te.note}`}</div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                      {timeEntries.length === 0 && <div className="text-sm text-muted-foreground">暂无工时记录</div>}
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Input
+                        type="number"
+                        value={teHours}
+                        onChange={e=>setTeHours(e.target.value)}
+                        placeholder="工时"
+                      />
+                      <Input
+                        type="date"
+                        value={teDate}
+                        onChange={e=>setTeDate(e.target.value)}
+                      />
+                      <div className="flex gap-2">
+                        <Input
+                          value={teNote}
+                          onChange={e=>setTeNote(e.target.value)}
+                          placeholder="备注"
+                          className="flex-1"
+                        />
+                        <Button type="button" onClick={addTimeEntry} size="sm">添加</Button>
                       </div>
                     </div>
                   </div>

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Member, Requirement, Milestone, Version, RequirementStatusChange
+from .models import Member, Requirement, Milestone, Version, RequirementStatusChange, TimeEntry
 
 @admin.register(Member)
 class MemberAdmin(admin.ModelAdmin):
@@ -32,3 +32,7 @@ class RequirementStatusChangeAdmin(admin.ModelAdmin):
     list_display = ('requirement', 'from_status', 'to_status', 'changed_at')
     list_filter = ('to_status',)
     search_fields = ('requirement__title',)
+
+@admin.register(TimeEntry)
+class TimeEntryAdmin(admin.ModelAdmin):
+    list_display = ('requirement', 'member', 'hours', 'date', 'note')

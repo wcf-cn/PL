@@ -139,6 +139,37 @@ class MemberDailySnapshot(models.Model):
         return f'{self.member.name} {self.date} 剩余{self.remaining_effort}h'
 
 
+class TimeEntry(models.Model):
+    requirement = models.ForeignKey(Requirement, on_delete=models.CASCADE, related_name='timeentries', verbose_name='需求')
+    member = models.ForeignKey(Member, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='成员')
+    hours = models.FloatField('工时(h)', validators=[MinValueValidator(0)])
+    date = models.DateField('日期', null=True, blank=True)
+    note = models.TextField('备注', blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = '工时记录'
+        verbose_name_plural = '工时记录'
+        ordering = ['-date', '-created_at']
+
+    def __str__(self):
+        return f'{self.requirement_id} +{self.hours}h'
+
+    def _resync_parent(self):
+        total = sum(t.hours for t in TimeEntry.objects.filter(requirement=self.requirement))
+        Requirement.objects.filter(pk=self.requirement_id).update(actual_effort=total)
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        self._resync_parent()
+
+    def delete(self, *args, **kwargs):
+        req_id = self.requirement_id
+        super().delete(*args, **kwargs)
+        total = sum(t.hours for t in TimeEntry.objects.filter(requirement_id=req_id))
+        Requirement.objects.filter(pk=req_id).update(actual_effort=total)
+
+
 class Version(models.Model):
     name = models.CharField('版本', max_length=64)
     integration_date = models.DateField('联调日', null=True, blank=True)

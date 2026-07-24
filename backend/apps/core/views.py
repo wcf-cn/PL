@@ -7,8 +7,8 @@ from django.utils import timezone
 from django.db.models import Count
 from django.http import HttpResponse
 import csv
-from .models import Member, Requirement, Milestone, MemberDailySnapshot, Version
-from .serializers import MemberSerializer, RequirementSerializer, MilestoneSerializer, VersionSerializer
+from .models import Member, Requirement, Milestone, MemberDailySnapshot, Version, TimeEntry
+from .serializers import MemberSerializer, RequirementSerializer, MilestoneSerializer, VersionSerializer, TimeEntrySerializer
 from .ai import chat_with_glm, parse_drafts, strip_json_block, build_system_prompt, parse_actions, strip_actions_block
 from .ai_actions import execute_action
 from .metrics import flow_metrics
@@ -41,6 +41,16 @@ class MilestoneViewSet(viewsets.ModelViewSet):
 class VersionViewSet(viewsets.ModelViewSet):
     queryset = Version.objects.all()
     serializer_class = VersionSerializer
+
+class TimeEntryViewSet(viewsets.ModelViewSet):
+    queryset = TimeEntry.objects.all()
+    serializer_class = TimeEntrySerializer
+    def get_queryset(self):
+        qs = TimeEntry.objects.all()
+        rid = self.request.query_params.get('requirement')
+        if rid:
+            qs = qs.filter(requirement_id=rid)
+        return qs
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
