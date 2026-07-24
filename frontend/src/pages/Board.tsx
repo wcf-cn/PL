@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
-import { STATUS_LABEL, STATUS_ORDER, type Requirement, type Status, type Member, type Priority, type Version } from '../types'
+import { STATUS_LABEL, STATUS_ORDER, type Requirement, type Status, type Member, type Priority, type Version, type Kind } from '../types'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
@@ -28,6 +28,7 @@ export default function Board() {
   const [assigneeFilter, setAssigneeFilter] = useState<number | null>(null)
   const [moduleFilter, setModuleFilter] = useState<string>('')
   const [priorityFilter, setPriorityFilter] = useState<string>('')
+  const [kindFilter, setKindFilter] = useState<string>('')
   const [searchText, setSearchText] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -66,6 +67,7 @@ export default function Board() {
       title: item.title,
       status: item.status,
       priority: item.priority,
+      kind: item.kind,
       assignee: item.assignee,
       module: item.module,
       est_effort: String(item.est_effort),
@@ -85,7 +87,7 @@ export default function Board() {
     setEditingId(null)
     setMilestones([])
     setError('')
-    setForm({ title: '', status: 'backlog', priority: 'P1', assignee: null, module: '', est_effort: '', actual_effort: '', progress: 0, planned_start: '', planned_end: '', version: null, blockedBy: [] })
+    setForm({ title: '', status: 'backlog', priority: 'P1', kind: 'feature', assignee: null, module: '', est_effort: '', actual_effort: '', progress: 0, planned_start: '', planned_end: '', version: null, blockedBy: [] })
     setMTitle(''); setMDate(''); setMNote('')
   }
 
@@ -124,7 +126,7 @@ export default function Board() {
 
   const openCreate = () => {
     setEditingId(null)
-    setForm({ title: '', status: 'backlog', priority: 'P1', assignee: null, module: '', est_effort: '', actual_effort: '', progress: 0, planned_start: '', planned_end: '', version: null, blockedBy: [] })
+    setForm({ title: '', status: 'backlog', priority: 'P1', kind: 'feature', assignee: null, module: '', est_effort: '', actual_effort: '', progress: 0, planned_start: '', planned_end: '', version: null, blockedBy: [] })
     setMilestones([])
     setError('')
     setShowForm(true)
@@ -134,6 +136,7 @@ export default function Board() {
     title: '',
     status: 'backlog' as Status,
     priority: 'P1' as Priority,
+    kind: 'feature' as Kind,
     assignee: null as number | null,
     module: '',
     est_effort: '',
@@ -167,6 +170,7 @@ export default function Board() {
         title: form.title,
         status: form.status,
         priority: form.priority,
+        kind: form.kind,
         assignee: form.assignee,
         module: form.module || '',
         est_effort: est,
@@ -249,6 +253,14 @@ export default function Board() {
             {['P0','P1','P2'].map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={kindFilter || '__all__'} onValueChange={(v) => setKindFilter(v === '__all__' ? '' : v)}>
+          <SelectTrigger className="w-24"><SelectValue placeholder="类型" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">全部类型</SelectItem>
+            <SelectItem value="feature">需求</SelectItem>
+            <SelectItem value="bug">缺陷</SelectItem>
+          </SelectContent>
+        </Select>
         <Input
           placeholder="搜索标题"
           value={searchText}
@@ -295,6 +307,18 @@ export default function Board() {
                       <SelectItem value="P0">P0</SelectItem>
                       <SelectItem value="P1">P1</SelectItem>
                       <SelectItem value="P2">P2</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="kind">类型</Label>
+                  <Select value={form.kind} onValueChange={(v) => setForm({...form, kind: v as Kind})}>
+                    <SelectTrigger id="kind">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="feature">需求</SelectItem>
+                      <SelectItem value="bug">缺陷</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -471,7 +495,7 @@ export default function Board() {
 
       <div className="flex gap-3 overflow-x-auto pb-4">
         {STATUS_ORDER.filter(st => showDone || st !== 'done').map(st => (
-          <Column key={st} status={st} items={items.filter(r => r.status === st && !r.parent && (versionFilter === null || r.version === versionFilter) && (assigneeFilter === null || r.assignee === assigneeFilter) && (moduleFilter === '' || r.module === moduleFilter) && (priorityFilter === '' || r.priority === priorityFilter) && (searchText === '' || r.title.toLowerCase().includes(searchText.toLowerCase())))} allItems={items} onDrop={onDrop} onEdit={startEdit} selectMode={selectMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} />
+          <Column key={st} status={st} items={items.filter(r => r.status === st && !r.parent && (versionFilter === null || r.version === versionFilter) && (assigneeFilter === null || r.assignee === assigneeFilter) && (moduleFilter === '' || r.module === moduleFilter) && (priorityFilter === '' || r.priority === priorityFilter) && (kindFilter === '' || r.kind === kindFilter) && (searchText === '' || r.title.toLowerCase().includes(searchText.toLowerCase())))} allItems={items} onDrop={onDrop} onEdit={startEdit} selectMode={selectMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} />
         ))}
       </div>
     </div>
@@ -567,6 +591,7 @@ function RequirementCard({ requirement, allItems, onEdit, selectMode, selected, 
           )}
           {riskBadge(requirement)}
           {stuckBadge(requirement)}
+          {requirement.kind === 'bug' && <Badge variant="outline" className="text-xs">🐛</Badge>}
           {requirement.blocked_by.length > 0 && <Badge variant="outline" className="text-xs">🔒 被阻塞({requirement.blocked_by.length})</Badge>}
         </div>
         {expanded && hasChildren && (

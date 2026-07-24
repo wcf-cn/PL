@@ -9,10 +9,10 @@ class MemberAdmin(admin.ModelAdmin):
 
 @admin.register(Requirement)
 class RequirementAdmin(admin.ModelAdmin):
-    list_display = ('title', 'status', 'priority', 'assignee', 'module', 'est_effort', 'progress', 'version')
-    list_filter = ('status', 'priority', 'module', 'version')
+    list_display = ('title', 'status', 'priority', 'kind', 'assignee', 'module', 'est_effort', 'progress', 'version')
+    list_filter = ('status', 'priority', 'kind', 'module', 'version')
     search_fields = ('title', 'note')
-    list_editable = ('status', 'priority', 'progress')
+    list_editable = ('status', 'priority', 'progress', 'kind')
     filter_horizontal = ('blocked_by',)
 
 @admin.register(Version)

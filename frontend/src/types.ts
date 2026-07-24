@@ -1,5 +1,6 @@
 export type Status = 'backlog'|'scheduled'|'in_progress'|'testing'|'done'|'blocked'|'paused'
 export type Priority = 'P0'|'P1'|'P2'
+export type Kind = 'feature'|'bug'
 
 export interface Member {
   id:number;
@@ -14,6 +15,7 @@ export interface Requirement {
   title:string;
   status:Status;
   priority:Priority;
+  kind:Kind;
   assignee:number|null;
   assignee_name?:string;
   module:string;

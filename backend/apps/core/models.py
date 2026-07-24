@@ -37,10 +37,12 @@ class Requirement(models.Model):
         (STATUS_PAUSED, '暂停'),
     ]
     PRIORITY_CHOICES = [('P0', 'P0'), ('P1', 'P1'), ('P2', 'P2')]
+    KIND_CHOICES = [('feature', '需求'), ('bug', '缺陷')]
 
     title = models.CharField('标题', max_length=200)
     status = models.CharField('状态', max_length=20, choices=STATUS_CHOICES, default=STATUS_BACKLOG)
     priority = models.CharField('优先级', max_length=4, choices=PRIORITY_CHOICES, default='P1')
+    kind = models.CharField('类型', max_length=10, choices=KIND_CHOICES, default='feature')
     assignee = models.ForeignKey(Member, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='负责人')
     module = models.CharField('模块', max_length=64, blank=True)
     progress = models.IntegerField('进度%', default=0)
