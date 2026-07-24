@@ -67,17 +67,42 @@ class Requirement(models.Model):
         # done 完成定义:已上线 → 进度强制 100
         if self.status == self.STATUS_DONE:
             self.progress = 100
-        # 状态变更历史:检测 status 变化才刷新时间戳
-        if self.pk:
+        is_new = self.pk is None
+        old_status = None
+        if not is_new:
             old = Requirement.objects.filter(pk=self.pk).only('status').first()
-            if old and old.status != self.status:
-                self.last_status_change_at = timezone.now()
-        elif self.last_status_change_at is None:
+            if old:
+                old_status = old.status
+        status_changed = (not is_new) and (old_status is not None) and (old_status != self.status)
+        if status_changed:
+            self.last_status_change_at = timezone.now()
+        elif is_new and self.last_status_change_at is None:
             self.last_status_change_at = timezone.now()
         super().save(*args, **kwargs)
+        # 状态变更事件日志:创建记初始事件,变更记转换事件
+        if is_new:
+            RequirementStatusChange.objects.create(requirement=self, from_status='', to_status=self.status)
+        elif status_changed:
+            RequirementStatusChange.objects.create(requirement=self, from_status=old_status, to_status=self.status)
 
     def __str__(self):
         return self.title
+
+
+class RequirementStatusChange(models.Model):
+    requirement = models.ForeignKey(Requirement, on_delete=models.CASCADE, related_name='status_changes',
+                                    verbose_name='需求')
+    from_status = models.CharField('从状态', max_length=20, blank=True)
+    to_status = models.CharField('到状态', max_length=20)
+    changed_at = models.DateTimeField('变更时间', auto_now_add=True)
+
+    class Meta:
+        verbose_name = '状态变更日志'
+        verbose_name_plural = '状态变更日志'
+        ordering = ['changed_at']
+
+    def __str__(self):
+        return f'{self.requirement_id} {self.from_status}→{self.to_status} @ {self.changed_at}'
 
 
 class Milestone(models.Model):
