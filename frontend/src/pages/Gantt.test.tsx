@@ -24,7 +24,22 @@ vi.mock('../api', () => ({
         },
       ]),
     },
-    versions: { list: vi.fn().mockResolvedValue([]) },
+    versions: {
+      list: vi.fn().mockResolvedValue([
+        {
+          id: 1,
+          name: 'v2.0',
+          integration_date: '2026-07-01',
+          freeze_date: '2026-07-03',
+          test_date: null,
+          release_date: null,
+          note: '',
+          current_phase: '联调中',
+          created_at: '',
+          updated_at: ''
+        },
+      ]),
+    },
   },
 }))
 
@@ -34,5 +49,11 @@ describe('Gantt', () => {
 
     await waitFor(() => expect(screen.getByText('甘特图')).toBeInTheDocument())
     expect(screen.getByText('用户登录')).toBeInTheDocument()
+  })
+
+  it('版本节点 label 带版本名', async () => {
+    render(<Gantt />)
+    await waitFor(() => expect(screen.getByText('甘特图')).toBeInTheDocument())
+    expect(screen.getByText(/v2\.0.*联调/)).toBeInTheDocument()
   })
 })
