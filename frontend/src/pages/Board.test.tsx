@@ -7,10 +7,10 @@ vi.mock('../api', () => ({
   api: {
     requirements: {
       list: vi.fn().mockResolvedValue([
-        { id:1, title:'登录', status:'in_progress', priority:'P0', assignee:1, assignee_name:'张三', module:'', est_effort:8, actual_effort:4, progress:50, planned_start:'2026-01-01', planned_end:'2026-01-15', parent:null, version:null, note:'' },
+        { id:1, title:'登录', status:'in_progress', priority:'P0', assignee:1, assignee_name:'张三', module:'', est_effort:8, actual_effort:4, progress:50, planned_start:'2026-01-01', planned_end:'2026-01-15', parent:null, version:null, blocked_by:[], note:'' },
       ]),
-      update: vi.fn().mockResolvedValue({ id:1, title:'登录', status:'in_progress', priority:'P0', assignee:1, assignee_name:'张三', module:'', est_effort:8, actual_effort:4, progress:50, planned_start:'2026-01-01', planned_end:'2026-01-15', parent:null, version:null, note:'' }),
-      create: vi.fn().mockResolvedValue({ id:99, title:'新需求', status:'backlog', priority:'P1', assignee:1, assignee_name:'张三', module:'', est_effort:4, actual_effort:0, progress:0, planned_start:null, planned_end:null, parent:null, version:null, note:'' }),
+      update: vi.fn().mockResolvedValue({ id:1, title:'登录', status:'in_progress', priority:'P0', assignee:1, assignee_name:'张三', module:'', est_effort:8, actual_effort:4, progress:50, planned_start:'2026-01-01', planned_end:'2026-01-15', parent:null, version:null, blocked_by:[], note:'' }),
+      create: vi.fn().mockResolvedValue({ id:99, title:'新需求', status:'backlog', priority:'P1', assignee:1, assignee_name:'张三', module:'', est_effort:4, actual_effort:0, progress:0, planned_start:null, planned_end:null, parent:null, version:null, blocked_by:[], note:'' }),
     },
     members: { list: vi.fn().mockResolvedValue([
       { id:1, name:'张三', week_capacity:40, modules:'', active:true },
@@ -29,6 +29,17 @@ describe('Board', () => {
     render(<Board />)
     await waitFor(() => expect(screen.getByText('登录')).toBeInTheDocument())
     expect(screen.getByText('开发中')).toBeInTheDocument()
+  })
+
+  it('超期需求显示红色角标', async () => {
+    const { api } = await import('../api')
+    const past = new Date(Date.now() - 86400000 * 3).toISOString().split('T')[0]
+    ;(api.requirements.list as any).mockResolvedValueOnce([
+      { id:1, title:'延期需求', status:'in_progress', priority:'P1', assignee:1, assignee_name:'张三', module:'', est_effort:8, actual_effort:2, progress:25, planned_start:'2026-07-01', planned_end:past, parent:null, version:null, blocked_by:[], note:'' },
+    ])
+    render(<Board />)
+    await waitFor(() => expect(screen.getByText('延期需求')).toBeInTheDocument())
+    expect(screen.getByText(/超期/)).toBeInTheDocument()
   })
 
   it('creates a new requirement', async () => {

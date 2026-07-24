@@ -26,6 +26,7 @@ export interface Requirement {
   parent: number | null;
   version:number|null;
   version_name?:string;
+  blocked_by:number[];
 }
 
 export interface Version {

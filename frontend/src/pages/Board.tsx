@@ -22,6 +22,9 @@ export default function Board() {
   const [members, setMembers] = useState<Member[]>([])
   const [versions, setVersions] = useState<Version[]>([])
   const [versionFilter, setVersionFilter] = useState<number | null>(null)
+  const [assigneeFilter, setAssigneeFilter] = useState<number | null>(null)
+  const [moduleFilter, setModuleFilter] = useState<string>('')
+  const [priorityFilter, setPriorityFilter] = useState<string>('')
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [milestones, setMilestones] = useState<any[]>([])
@@ -202,6 +205,27 @@ export default function Board() {
             {versions.map(v => <SelectItem key={v.id} value={v.id.toString()}>{v.name}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={assigneeFilter?.toString() ?? ''} onValueChange={(v) => setAssigneeFilter(v ? Number(v) : null)}>
+          <SelectTrigger className="w-28"><SelectValue placeholder="负责人" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">全部负责人</SelectItem>
+            {members.map(m => <SelectItem key={m.id} value={m.id.toString()}>{m.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={moduleFilter || '__all__'} onValueChange={(v) => setModuleFilter(v === '__all__' ? '' : v)}>
+          <SelectTrigger className="w-28"><SelectValue placeholder="模块" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">全部模块</SelectItem>
+            {Array.from(new Set(items.map(r => r.module).filter(Boolean))).map(mo => <SelectItem key={mo} value={mo}>{mo}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={priorityFilter || '__all__'} onValueChange={(v) => setPriorityFilter(v === '__all__' ? '' : v)}>
+          <SelectTrigger className="w-24"><SelectValue placeholder="优先级" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">全部优先级</SelectItem>
+            {['P0','P1','P2'].map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
 
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) closeForm() }}>
@@ -374,7 +398,7 @@ export default function Board() {
 
       <div className="flex gap-3 overflow-x-auto pb-4">
         {STATUS_ORDER.filter(st => showDone || st !== 'done').map(st => (
-          <Column key={st} status={st} items={items.filter(r => r.status === st && !r.parent && (versionFilter === null || r.version === versionFilter))} allItems={items} onDrop={onDrop} onEdit={startEdit} selectMode={selectMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} />
+          <Column key={st} status={st} items={items.filter(r => r.status === st && !r.parent && (versionFilter === null || r.version === versionFilter) && (assigneeFilter === null || r.assignee === assigneeFilter) && (moduleFilter === '' || r.module === moduleFilter) && (priorityFilter === '' || r.priority === priorityFilter))} allItems={items} onDrop={onDrop} onEdit={startEdit} selectMode={selectMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} />
         ))}
       </div>
     </div>
@@ -407,6 +431,16 @@ function Column({ status, items, allItems, onDrop, onEdit, selectMode, selectedI
       </div>
     </div>
   )
+}
+
+function riskBadge(r: Requirement) {
+  const today = new Date(); today.setHours(0,0,0,0)
+  if (!r.planned_end || ['done','paused'].includes(r.status)) return null
+  const end = new Date(r.planned_end)
+  const days = Math.round((end.getTime() - today.getTime()) / 86400000)
+  if (days < 0) return <Badge variant="destructive" className="text-xs">超期 {-days}天</Badge>
+  if (days <= 2) return <Badge variant="secondary" className="text-xs">将至 {days}天</Badge>
+  return null
 }
 
 function RequirementCard({ requirement, allItems, onEdit, selectMode, selected, onToggle }: { requirement: Requirement; allItems: Requirement[]; onEdit: (r: Requirement) => void; selectMode: boolean; selected: boolean; onToggle: (id: number) => void }) {
@@ -449,6 +483,8 @@ function RequirementCard({ requirement, allItems, onEdit, selectMode, selected, 
           {(requirement.planned_start || requirement.planned_end) && (
             <span>{requirement.planned_start || '?'}~{requirement.planned_end || '?'}</span>
           )}
+          {riskBadge(requirement)}
+          {requirement.blocked_by.length > 0 && <Badge variant="outline" className="text-xs">🔒 被阻塞({requirement.blocked_by.length})</Badge>}
         </div>
         {expanded && hasChildren && (
           <div className="mt-3 pl-3 border-l-2 border-muted space-y-2">
