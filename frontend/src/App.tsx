@@ -11,6 +11,7 @@ import Team from './pages/Team'
 import Versions from './pages/Versions'
 import Focus from './pages/Focus'
 import Estimation from './pages/Estimation'
+import Performance from './pages/Performance'
 import { Button } from './components/ui/button'
 import { cn } from './lib/utils'
 import AssistantWidget from './components/AssistantWidget'
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
   { href: '#/versions', label: '版本', icon: '🏷️' },
   { href: '#/focus', label: '聚焦', icon: '🚨' },
   { href: '#/estimation', label: '估时', icon: '🎯' },
+  { href: '#/performance', label: '效能', icon: '📈' },
   { href: '#/team', label: '团队', icon: '👥' },
 ]
 
@@ -49,6 +51,7 @@ export default function App() {
                 <Route path="/versions" element={<Versions />} />
                 <Route path="/focus" element={<Focus />} />
                 <Route path="/estimation" element={<Estimation />} />
+                <Route path="/performance" element={<Performance />} />
                 <Route path="/team" element={<Team />} />
                 <Route path="*" element={<Navigate to="/board" />} />
               </>}

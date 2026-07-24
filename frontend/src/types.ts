@@ -95,3 +95,9 @@ export interface AIAction {
   params?: Record<string, any>
   description?: string
 }
+
+export interface FlowMetrics {
+  throughput: { week: string; count: number }[]
+  cycletime: { id: number; title: string; hours: number }[]
+  cfd: Array<Record<string, number | string>>
+}
