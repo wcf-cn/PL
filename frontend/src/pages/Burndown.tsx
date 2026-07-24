@@ -18,7 +18,9 @@ export default function Burndown() {
   }, [])
 
   const { chartData, activeMembers, totals, comparison } = useMemo(() => {
-    const inFlight = reqs.filter(r => !['done', 'paused'].includes(r.status))
+    // A1: 只算叶子(无子任务),避免父子 double-count
+    const leaves = reqs.filter(r => !reqs.some(c => c.parent === r.id))
+    const inFlight = leaves.filter(r => !['done', 'paused'].includes(r.status))
     const totalEst = inFlight.reduce((s, r) => s + r.est_effort, 0)
     const totalInv = inFlight.reduce((s, r) => s + r.actual_effort, 0)
     const totalRem = Math.max(0, totalEst - totalInv)
@@ -76,8 +78,9 @@ export default function Burndown() {
 
     // 今天的对比(实际 vs 理想)
     const comp = activeMems.map((m, i) => {
-      const myInFlight = inFlight.filter(r => r.assignee === m.id)
-      const actualRemain = myInFlight.reduce((s, r) => s + Math.max(0, r.est_effort - r.actual_effort), 0)
+      // A2: actual 与 ideal 同口径,都只算有计划日期的(myDated),否则未排期需求导致恒显"落后"
+      const myDated = dated.filter(r => r.assignee === m.id)
+      const actualRemain = myDated.reduce((s, r) => s + Math.max(0, r.est_effort - r.actual_effort), 0)
       const todayIdeal = data.find(r => r.date === todayStr)
       const idealVal = todayIdeal ? (todayIdeal[`${m.name}_ideal`] as number) : undefined
       const diff = idealVal !== undefined ? actualRemain - idealVal : 0
