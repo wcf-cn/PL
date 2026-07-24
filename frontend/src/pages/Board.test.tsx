@@ -7,10 +7,10 @@ vi.mock('../api', () => ({
   api: {
     requirements: {
       list: vi.fn().mockResolvedValue([
-        { id:1, title:'登录', status:'in_progress', priority:'P0', assignee:1, assignee_name:'张三', module:'', est_effort:8, actual_effort:4, progress:50, planned_start:'2026-01-01', planned_end:'2026-01-15', parent:null, version:null, blocked_by:[], note:'' },
+        { id:1, title:'登录', status:'in_progress', priority:'P0', assignee:1, assignee_name:'张三', module:'', est_effort:8, actual_effort:4, progress:50, planned_start:'2026-01-01', planned_end:'2026-01-15', parent:null, version:null, blocked_by:[], last_status_change_at:null, created_at:'', note:'' },
       ]),
-      update: vi.fn().mockResolvedValue({ id:1, title:'登录', status:'in_progress', priority:'P0', assignee:1, assignee_name:'张三', module:'', est_effort:8, actual_effort:4, progress:50, planned_start:'2026-01-01', planned_end:'2026-01-15', parent:null, version:null, blocked_by:[], note:'' }),
-      create: vi.fn().mockResolvedValue({ id:99, title:'新需求', status:'backlog', priority:'P1', assignee:1, assignee_name:'张三', module:'', est_effort:4, actual_effort:0, progress:0, planned_start:null, planned_end:null, parent:null, version:null, blocked_by:[], note:'' }),
+      update: vi.fn().mockResolvedValue({ id:1, title:'登录', status:'in_progress', priority:'P0', assignee:1, assignee_name:'张三', module:'', est_effort:8, actual_effort:4, progress:50, planned_start:'2026-01-01', planned_end:'2026-01-15', parent:null, version:null, blocked_by:[], last_status_change_at:null, created_at:'', note:'' }),
+      create: vi.fn().mockResolvedValue({ id:99, title:'新需求', status:'backlog', priority:'P1', assignee:1, assignee_name:'张三', module:'', est_effort:4, actual_effort:0, progress:0, planned_start:null, planned_end:null, parent:null, version:null, blocked_by:[], last_status_change_at:null, created_at:'', note:'' }),
     },
     members: { list: vi.fn().mockResolvedValue([
       { id:1, name:'张三', week_capacity:40, modules:'', active:true },
@@ -35,7 +35,7 @@ describe('Board', () => {
     const { api } = await import('../api')
     const past = new Date(Date.now() - 86400000 * 3).toISOString().split('T')[0]
     ;(api.requirements.list as any).mockResolvedValueOnce([
-      { id:1, title:'延期需求', status:'in_progress', priority:'P1', assignee:1, assignee_name:'张三', module:'', est_effort:8, actual_effort:2, progress:25, planned_start:'2026-07-01', planned_end:past, parent:null, version:null, blocked_by:[], note:'' },
+      { id:1, title:'延期需求', status:'in_progress', priority:'P1', assignee:1, assignee_name:'张三', module:'', est_effort:8, actual_effort:2, progress:25, planned_start:'2026-07-01', planned_end:past, parent:null, version:null, blocked_by:[], last_status_change_at:null, created_at:'', note:'' },
     ])
     render(<Board />)
     await waitFor(() => expect(screen.getByText('延期需求')).toBeInTheDocument())
@@ -68,5 +68,16 @@ describe('Board', () => {
     expect(screen.getByText('编辑需求')).toBeInTheDocument()
     expect(screen.getByText('已投入时间h')).toBeInTheDocument()
     expect(screen.getByText('进度')).toBeInTheDocument()
+  })
+
+  it('状态停留超7天显示卡顿角标', async () => {
+    const { api } = await import('../api')
+    const old = new Date(Date.now() - 86400000 * 10).toISOString()
+    ;(api.requirements.list as any).mockResolvedValueOnce([
+      { id:1, title:'卡住的需求', status:'in_progress', priority:'P1', assignee:1, assignee_name:'张三', module:'', est_effort:8, actual_effort:1, progress:25, planned_start:null, planned_end:null, parent:null, version:null, blocked_by:[], last_status_change_at:old, created_at:old, note:'' },
+    ])
+    render(<Board />)
+    await waitFor(() => expect(screen.getByText('卡住的需求')).toBeInTheDocument())
+    expect(screen.getByText(/卡 \d+天/)).toBeInTheDocument()
   })
 })

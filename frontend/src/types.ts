@@ -27,6 +27,8 @@ export interface Requirement {
   version:number|null;
   version_name?:string;
   blocked_by:number[];
+  last_status_change_at:string|null;
+  created_at:string;
 }
 
 export interface Version {

@@ -443,6 +443,15 @@ function riskBadge(r: Requirement) {
   return null
 }
 
+function stuckBadge(r: Requirement) {
+  if (r.status === 'done') return null
+  const ts = r.last_status_change_at || r.created_at
+  if (!ts) return null
+  const days = Math.round((Date.now() - new Date(ts).getTime()) / 86400000)
+  if (days >= 7) return <Badge variant="secondary" className="text-xs">卡 {days}天</Badge>
+  return null
+}
+
 function RequirementCard({ requirement, allItems, onEdit, selectMode, selected, onToggle }: { requirement: Requirement; allItems: Requirement[]; onEdit: (r: Requirement) => void; selectMode: boolean; selected: boolean; onToggle: (id: number) => void }) {
   const [expanded, setExpanded] = useState(false)
   const children = allItems.filter(r => r.parent === requirement.id)
@@ -484,6 +493,7 @@ function RequirementCard({ requirement, allItems, onEdit, selectMode, selected, 
             <span>{requirement.planned_start || '?'}~{requirement.planned_end || '?'}</span>
           )}
           {riskBadge(requirement)}
+          {stuckBadge(requirement)}
           {requirement.blocked_by.length > 0 && <Badge variant="outline" className="text-xs">🔒 被阻塞({requirement.blocked_by.length})</Badge>}
         </div>
         {expanded && hasChildren && (
