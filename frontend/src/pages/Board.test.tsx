@@ -81,4 +81,18 @@ describe('Board', () => {
     await waitFor(() => expect(screen.getByText('卡住的需求')).toBeInTheDocument())
     expect(screen.getByText(/卡 \d+天/)).toBeInTheDocument()
   })
+
+  it('按标题搜索过滤卡片', async () => {
+    const { api } = await import('../api')
+    ;(api.requirements.list as any).mockResolvedValue([
+      { id:1, title:'登录接口', status:'in_progress', priority:'P1', assignee:1, assignee_name:'张三', module:'', est_effort:8, actual_effort:0, progress:0, planned_start:null, planned_end:null, parent:null, version:null, blocked_by:[], last_status_change_at:null, created_at:'', note:'' },
+      { id:2, title:'支付接口', status:'in_progress', priority:'P1', assignee:1, assignee_name:'张三', module:'', est_effort:6, actual_effort:0, progress:0, planned_start:null, planned_end:null, parent:null, version:null, blocked_by:[], last_status_change_at:null, created_at:'', note:'' },
+    ])
+    const user = userEvent.setup()
+    render(<Board />)
+    await waitFor(() => expect(screen.getByText('登录接口')).toBeInTheDocument())
+    await user.type(screen.getByPlaceholderText('搜索标题'), '支付')
+    await waitFor(() => expect(screen.queryByText('登录接口')).not.toBeInTheDocument())
+    expect(screen.getByText('支付接口')).toBeInTheDocument()
+  })
 })

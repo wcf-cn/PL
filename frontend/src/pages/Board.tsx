@@ -26,6 +26,7 @@ export default function Board() {
   const [assigneeFilter, setAssigneeFilter] = useState<number | null>(null)
   const [moduleFilter, setModuleFilter] = useState<string>('')
   const [priorityFilter, setPriorityFilter] = useState<string>('')
+  const [searchText, setSearchText] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [milestones, setMilestones] = useState<any[]>([])
@@ -234,6 +235,12 @@ export default function Board() {
             {['P0','P1','P2'].map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Input
+          placeholder="搜索标题"
+          value={searchText}
+          onChange={e => setSearchText(e.target.value)}
+          className="w-40"
+        />
       </div>
 
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) closeForm() }}>
@@ -445,7 +452,7 @@ export default function Board() {
 
       <div className="flex gap-3 overflow-x-auto pb-4">
         {STATUS_ORDER.filter(st => showDone || st !== 'done').map(st => (
-          <Column key={st} status={st} items={items.filter(r => r.status === st && !r.parent && (versionFilter === null || r.version === versionFilter) && (assigneeFilter === null || r.assignee === assigneeFilter) && (moduleFilter === '' || r.module === moduleFilter) && (priorityFilter === '' || r.priority === priorityFilter))} allItems={items} onDrop={onDrop} onEdit={startEdit} selectMode={selectMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} />
+          <Column key={st} status={st} items={items.filter(r => r.status === st && !r.parent && (versionFilter === null || r.version === versionFilter) && (assigneeFilter === null || r.assignee === assigneeFilter) && (moduleFilter === '' || r.module === moduleFilter) && (priorityFilter === '' || r.priority === priorityFilter) && (searchText === '' || r.title.toLowerCase().includes(searchText.toLowerCase())))} allItems={items} onDrop={onDrop} onEdit={startEdit} selectMode={selectMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} />
         ))}
       </div>
     </div>
