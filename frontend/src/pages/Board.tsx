@@ -143,6 +143,18 @@ export default function Board() {
     blockedBy: [] as number[],
   })
 
+  // 派活负载提示:所选负责人的在途叶子负载 vs 可用产能(×0.7)
+  const assigneeLoad = (() => {
+    if (form.assignee == null) return null
+    const m = members.find(x => x.id === form.assignee)
+    if (!m) return null
+    const leaves = items.filter(r => !items.some(c => c.parent === r.id))
+    const load = leaves.filter(r => r.assignee === form.assignee && !['done', 'paused'].includes(r.status))
+      .reduce((s, r) => s + r.est_effort, 0)
+    const cap = m.week_capacity * 0.7
+    return { load, cap, util: cap > 0 ? load / cap : 0 }
+  })()
+
   const createReq = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.title.trim()) return
@@ -295,6 +307,11 @@ export default function Board() {
                       {members.map(m => <SelectItem key={m.id} value={m.id.toString()}>{m.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  {assigneeLoad && (
+                    <div className={`text-xs ${assigneeLoad.util > 1 ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}>
+                      在途 {assigneeLoad.load}h / 可用 {Math.round(assigneeLoad.cap)}h{assigneeLoad.util > 1 ? ' · 超载' : ''}
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="module">模块</Label>
