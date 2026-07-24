@@ -9,6 +9,7 @@ import Burndown from './pages/Burndown'
 import Gantt from './pages/Gantt'
 import Team from './pages/Team'
 import Versions from './pages/Versions'
+import Focus from './pages/Focus'
 import { Button } from './components/ui/button'
 import { cn } from './lib/utils'
 import AssistantWidget from './components/AssistantWidget'
@@ -20,6 +21,7 @@ const NAV_ITEMS = [
   { href: '#/burndown', label: '燃尽', icon: '📉' },
   { href: '#/gantt', label: '甘特', icon: '📊' },
   { href: '#/versions', label: '版本', icon: '🏷️' },
+  { href: '#/focus', label: '聚焦', icon: '🚨' },
   { href: '#/team', label: '团队', icon: '👥' },
 ]
 
@@ -43,6 +45,7 @@ export default function App() {
                 <Route path="/burndown" element={<Burndown />} />
                 <Route path="/gantt" element={<Gantt />} />
                 <Route path="/versions" element={<Versions />} />
+                <Route path="/focus" element={<Focus />} />
                 <Route path="/team" element={<Team />} />
                 <Route path="*" element={<Navigate to="/board" />} />
               </>}
