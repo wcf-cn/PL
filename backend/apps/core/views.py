@@ -66,7 +66,16 @@ def ai_chat(request):
     history = request.data.get("history", [])
     members = list(Member.objects.values("id", "name"))
     modules = list(Requirement.objects.exclude(module="").values_list("module", flat=True).distinct())
-    system = build_system_prompt(members, modules)
+    # 在途叶子需求摘要(最多30条,按优先级/工时排序)
+    in_flight_qs = (Requirement.objects.exclude(status__in=['done', 'paused'])
+        .annotate(nc=Count('children')).filter(nc=0)
+        .select_related('assignee').order_by('-priority', '-est_effort')[:30])
+    in_flight_text = "; ".join(
+        f'{r.title}[{r.get_status_display()}]@{r.assignee.name if r.assignee else "未分配"} {r.est_effort}h'
+        for r in in_flight_qs) or "无"
+    # 版本摘要(含当前阶段)
+    versions_text = "; ".join(f'{v.name}({v.current_phase})' for v in Version.objects.all()) or "无"
+    system = build_system_prompt(members, modules, in_flight_text, versions_text)
     messages = [{"role": "system", "content": system}] + list(history) + [{"role": "user", "content": message}]
     try:
         reply = chat_with_glm(messages)

@@ -44,11 +44,12 @@ def parse_actions(text):
 def strip_actions_block(text):
     return re.sub(r"```actions\s*\[.*?\]\s*```", "", text, flags=re.DOTALL).strip()
 
-def build_system_prompt(members, modules):
+def build_system_prompt(members, modules, in_flight_text, versions_text):
     m_list = ", ".join(f'{x["name"]}(id:{x["id"]})' for x in members) or "无"
     mod_list = ", ".join(modules) if modules else "无"
     return f"""你是 PL(技术主管)的分析助手。用户描述一个问题/需求,你帮深度拆解。
-现有团队成员:{m_list};模块:{mod_list}。
+现有团队成员:{m_list};模块:{mod_list};版本:{versions_text}。
+在途需求(叶子,最多30条):{in_flight_text}
 分析框架:
 1. 先理解问题(现象+根因方向)
 2. 列出决策点(模型/算法/逻辑/数据/测试/前端/后端——哪些要改)

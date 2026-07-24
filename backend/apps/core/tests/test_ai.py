@@ -24,9 +24,12 @@ def test_strip_json_block_removes_json():
 def test_build_system_prompt_has_analysis_framework():
     prompt = build_system_prompt(
         [{"id":1,"name":"张三"}],
-        ["后端","前端"]
+        ["后端","前端"],
+        "登录接口[开发中]@张三 8h",
+        "v2.0(联调中)",
     )
     assert "张三" in prompt and "后端" in prompt
+    assert "登录接口" in prompt and "v2.0" in prompt
     assert "决策点" in prompt
     assert "parent" in prompt and "children" in prompt
 
