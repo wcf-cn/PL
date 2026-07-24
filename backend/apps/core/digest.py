@@ -1,4 +1,6 @@
 from datetime import timedelta
+import os
+import requests
 from django.utils import timezone
 from django.db.models import Count
 from .models import Requirement, Version, Member
@@ -73,3 +75,27 @@ def build_digest():
     lines += section('⚠️', '超载成员',
                      [f'- {name} {load}h > 可用{cap}h' for name, load, cap in overloaded])
     return '\n'.join(lines)
+
+
+def _title():
+    return f'PL 看板 每日风险摘要({timezone.now().date().isoformat()})'
+
+
+def send_digest():
+    """读 .env 配置,把摘要推到 Server酱 webhook(个人微信)和/或邮件。无配置则静默跳过。"""
+    md = build_digest()
+    title = _title()
+    webhook = os.environ.get('NOTIFY_WEBHOOK_URL', '')
+    if webhook:
+        try:
+            requests.post(webhook, data={'title': title, 'desp': md}, timeout=15)
+        except Exception:
+            pass  # 推送失败不抛,避免 cron 报错刷屏
+    email_to = os.environ.get('NOTIFY_EMAIL_TO', '')
+    if email_to:
+        try:
+            from django.core.mail import send_mail
+            send_mail(subject=title, message=md, from_email=os.environ.get('EMAIL_HOST_USER', '') or 'pl-board@local',
+                      recipient_list=[email_to], fail_silently=True)
+        except Exception:
+            pass

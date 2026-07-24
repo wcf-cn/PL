@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 import pytest
+from unittest.mock import patch, MagicMock
 from apps.core.models import Member, Requirement, Version
 from apps.core.digest import build_digest
 
@@ -27,3 +28,30 @@ def test_digest_version_risk_and_overload():
     md = build_digest()
     assert '超载' in md and '张三' in md
     assert '版本风险' in md and 'v2.0' in md
+
+
+@pytest.mark.django_db
+@patch('apps.core.digest.requests.post')
+def test_send_digest_posts_to_webhook(mock_post):
+    mock_post.return_value = MagicMock(status_code=200)
+    with patch('apps.core.digest.build_digest', return_value='# 摘要\n内容'):
+        from apps.core.digest import send_digest
+        with patch.dict('os.environ', {'NOTIFY_WEBHOOK_URL': 'https://sctapi.ftqq.com/KEY.send'}):
+            send_digest()
+        assert mock_post.called
+        url, kwargs = mock_post.call_args[0][0], mock_post.call_args[1]
+        assert 'sctapi.ftqq.com' in url
+        assert '摘要' in (kwargs.get('data', {}).get('title') or kwargs.get('json', {}).get('title', ''))
+
+
+@pytest.mark.django_db
+@patch('apps.core.digest.requests.post')
+def test_send_digest_noop_without_config(mock_post):
+    from apps.core.digest import send_digest
+    with patch.dict('os.environ', {}, clear=False):
+        # 确保无 webhook 配置时不报错、不发
+        import os
+        os.environ.pop('NOTIFY_WEBHOOK_URL', None)
+        os.environ.pop('NOTIFY_EMAIL_TO', None)
+        send_digest()
+    assert not mock_post.called

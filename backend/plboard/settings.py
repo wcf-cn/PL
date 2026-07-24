@@ -52,6 +52,13 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': ['apps.core.auth.NoCSRFSessionAuthentication'],
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAuthenticated'],
 }
+# 邮件(可选,供每日摘要 NOTIFY_EMAIL_TO 使用;不配则不发邮件)
+EMAIL_HOST = os.environ.get('EMAIL_HOST', '')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '25'))
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'False') == 'True'
+EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'False') == 'True'
 if FRONTEND_DIST.exists():
     STATICFILES_DIRS = [FRONTEND_DIST / 'assets']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
