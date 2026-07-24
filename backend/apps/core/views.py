@@ -11,6 +11,7 @@ from .models import Member, Requirement, Milestone, MemberDailySnapshot, Version
 from .serializers import MemberSerializer, RequirementSerializer, MilestoneSerializer, VersionSerializer
 from .ai import chat_with_glm, parse_drafts, strip_json_block, build_system_prompt, parse_actions, strip_actions_block
 from .ai_actions import execute_action
+from .metrics import flow_metrics
 
 class MemberViewSet(viewsets.ModelViewSet):
     queryset = Member.objects.all()
@@ -133,3 +134,8 @@ def export_requirements(request):
             r.updated_at.strftime('%Y-%m-%d'),
         ])
     return resp
+
+
+@api_view(['GET'])
+def metrics_flow(request):
+    return Response(flow_metrics())
