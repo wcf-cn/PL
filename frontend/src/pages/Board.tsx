@@ -9,6 +9,7 @@ import { Card, CardContent } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
 import { Separator } from '../components/ui/separator'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog'
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from '../components/ui/dropdown-menu'
 import { cn } from '../lib/utils'
 
 const PRIO_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -69,6 +70,8 @@ export default function Board() {
       progress: item.progress,
       planned_start: item.planned_start || '',
       planned_end: item.planned_end || '',
+      version: item.version,
+      blockedBy: item.blocked_by,
     })
     setShowForm(true)
     loadMilestones(item.id)
@@ -79,7 +82,7 @@ export default function Board() {
     setEditingId(null)
     setMilestones([])
     setError('')
-    setForm({ title: '', status: 'backlog', priority: 'P1', assignee: null, module: '', est_effort: '', actual_effort: '', progress: 0, planned_start: '', planned_end: '' })
+    setForm({ title: '', status: 'backlog', priority: 'P1', assignee: null, module: '', est_effort: '', actual_effort: '', progress: 0, planned_start: '', planned_end: '', version: null, blockedBy: [] })
     setMTitle(''); setMDate(''); setMNote('')
   }
 
@@ -118,7 +121,7 @@ export default function Board() {
 
   const openCreate = () => {
     setEditingId(null)
-    setForm({ title: '', status: 'backlog', priority: 'P1', assignee: null, module: '', est_effort: '', actual_effort: '', progress: 0, planned_start: '', planned_end: '' })
+    setForm({ title: '', status: 'backlog', priority: 'P1', assignee: null, module: '', est_effort: '', actual_effort: '', progress: 0, planned_start: '', planned_end: '', version: null, blockedBy: [] })
     setMilestones([])
     setError('')
     setShowForm(true)
@@ -135,6 +138,8 @@ export default function Board() {
     progress: 0 as number,
     planned_start: '',
     planned_end: '',
+    version: null as number | null,
+    blockedBy: [] as number[],
   })
 
   const createReq = async (e: React.FormEvent) => {
@@ -154,6 +159,8 @@ export default function Board() {
         progress: form.progress,
         planned_start: form.planned_start || null,
         planned_end: form.planned_end || null,
+        version: form.version,
+        blocked_by: form.blockedBy,
       }
       if (editingId) {
         const updated = await api.requirements.update(editingId, payload)
@@ -291,6 +298,18 @@ export default function Board() {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="version">目标版本</Label>
+                  <Select value={form.version?.toString() || ''} onValueChange={(v) => setForm({...form, version: v ? Number(v) : null})}>
+                    <SelectTrigger id="version">
+                      <SelectValue placeholder="无版本" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">无版本</SelectItem>
+                      {versions.map(v => <SelectItem key={v.id} value={v.id.toString()}>{v.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="est_effort">预计工时h</Label>
                   <Input
                     id="est_effort"
@@ -339,6 +358,33 @@ export default function Board() {
                     onChange={e => setForm({...form, planned_end: e.target.value})}
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>被阻塞于</Label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" type="button" className="w-full justify-start font-normal">
+                      {form.blockedBy.length === 0 ? '选择依赖项…' : `已选 ${form.blockedBy.length} 项`}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="max-h-72 w-80">
+                    {items.filter(r => r.id !== editingId).map(r => (
+                      <DropdownMenuCheckboxItem
+                        key={r.id}
+                        checked={form.blockedBy.includes(r.id)}
+                        onCheckedChange={(c) =>
+                          setForm(f => ({ ...f, blockedBy: c ? [...f.blockedBy, r.id] : f.blockedBy.filter(x => x !== r.id) }))
+                        }
+                      >
+                        {r.title}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                    {items.filter(r => r.id !== editingId).length === 0 && (
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">暂无其他需求可选</div>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
 
               {editingId && (

@@ -22,7 +22,13 @@ export default function Capacity() {
   }, [])
 
   const rows = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0]
+    // 本周(周一~周日):"本周负载"按周与 planned 区间是否重叠计算(避免"今天不在区间"时显示 0%)
+    const _today = new Date(); _today.setHours(0, 0, 0, 0)
+    const weekStart = new Date(_today)
+    weekStart.setDate(weekStart.getDate() - (weekStart.getDay() === 0 ? 6 : weekStart.getDay() - 1))
+    const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 6)
+    const weekStartStr = weekStart.toISOString().split('T')[0]
+    const weekEndStr = weekEnd.toISOString().split('T')[0]
     // A1: 只算叶子(无子任务)
     const leaves = reqs.filter(r => !reqs.some(c => c.parent === r.id))
     return members.filter(m => m.active).map(m => {
@@ -31,9 +37,9 @@ export default function Capacity() {
       const scheduled = myReqs.filter(r => r.planned_start && r.planned_end)
       const unscheduled = myReqs.filter(r => !r.planned_start || !r.planned_end)
 
-      // 当前周负载:今天在 planned_start~planned_end 内的,取 est_effort/duration
+      // 本周负载:本周(weekStart~weekEnd)与 planned 区间有重叠的需求,贡献其日速率(×5 换算成周)
       const todayLoad = scheduled
-        .filter(r => r.planned_start! <= today && r.planned_end! >= today)
+        .filter(r => r.planned_start! <= weekEndStr && r.planned_end! >= weekStartStr)
         .reduce((s, r) => s + r.est_effort / daysBetween(r.planned_start!, r.planned_end!), 0)
 
       // 峰值周负载:遍历所有日期,找最大的日负载×5(工作日)
