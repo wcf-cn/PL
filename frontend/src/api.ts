@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Member, Requirement, Milestone, ChatMessage, DraftResult, AIAction, MemberSnapshot } from './types'
+import type { Member, Requirement, Milestone, ChatMessage, DraftResult, AIAction, MemberSnapshot, Version } from './types'
 
 // baseURL='' 同源(单端口部署)。base 路径必须带尾斜杠:DRF DefaultRouter
 // 注册强制尾斜杠,Django APPEND_SLASH 对 GET 能 301 补救但对 POST/PATCH/DELETE
@@ -28,6 +28,7 @@ export const api = {
   logout: () => http.post('/api/auth/logout'),
   members: crud<Member>('/api/members/'),
   requirements: crud<Requirement>('/api/requirements/'),
+  versions: crud<Version>('/api/versions/'),
   milestones: crud<Milestone>('/api/milestones/'),
   aiChat: (message: string, history: ChatMessage[]) =>
     http.post<{reply: string, drafts: DraftResult | null, actions: AIAction[]}>('/api/ai/chat/', { message, history }).then(r => r.data),

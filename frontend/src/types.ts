@@ -24,6 +24,21 @@ export interface Requirement {
   planned_end:string|null;
   note:string;
   parent: number | null;
+  version:number|null;
+  version_name?:string;
+}
+
+export interface Version {
+  id:number;
+  name:string;
+  integration_date:string|null;
+  freeze_date:string|null;
+  test_date:string|null;
+  release_date:string|null;
+  note:string;
+  current_phase:string;
+  created_at:string;
+  updated_at:string;
 }
 
 export interface Milestone {

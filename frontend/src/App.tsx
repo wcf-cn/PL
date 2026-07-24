@@ -8,6 +8,7 @@ import Schedule from './pages/Schedule'
 import Burndown from './pages/Burndown'
 import Gantt from './pages/Gantt'
 import Team from './pages/Team'
+import Versions from './pages/Versions'
 import { Button } from './components/ui/button'
 import { cn } from './lib/utils'
 import AssistantWidget from './components/AssistantWidget'
@@ -18,6 +19,7 @@ const NAV_ITEMS = [
   { href: '#/schedule', label: '排期', icon: '📅' },
   { href: '#/burndown', label: '燃尽', icon: '📉' },
   { href: '#/gantt', label: '甘特', icon: '📊' },
+  { href: '#/versions', label: '版本', icon: '🏷️' },
   { href: '#/team', label: '团队', icon: '👥' },
 ]
 
@@ -40,6 +42,7 @@ export default function App() {
                 <Route path="/schedule" element={<Schedule />} />
                 <Route path="/burndown" element={<Burndown />} />
                 <Route path="/gantt" element={<Gantt />} />
+                <Route path="/versions" element={<Versions />} />
                 <Route path="/team" element={<Team />} />
                 <Route path="*" element={<Navigate to="/board" />} />
               </>}
