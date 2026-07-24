@@ -50,6 +50,7 @@ class Requirement(models.Model):
     note = models.TextField('备注', blank=True)
     parent = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True,
                                related_name='children', verbose_name='父需求')
+    blocked_by = models.ManyToManyField('self', symmetrical=False, blank=True, verbose_name='被阻塞于')
     version = models.ForeignKey('Version', on_delete=models.SET_NULL, null=True, blank=True,
                                 related_name='requirements', verbose_name='目标版本')
     created_at = models.DateTimeField(auto_now_add=True)

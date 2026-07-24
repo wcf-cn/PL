@@ -13,6 +13,7 @@ class RequirementAdmin(admin.ModelAdmin):
     list_filter = ('status', 'priority', 'module', 'version')
     search_fields = ('title', 'note')
     list_editable = ('status', 'priority', 'progress')
+    filter_horizontal = ('blocked_by',)
 
 @admin.register(Version)
 class VersionAdmin(admin.ModelAdmin):
