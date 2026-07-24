@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from django.core.validators import MinValueValidator
 
 class Member(models.Model):
     name = models.CharField('姓名', max_length=64)
@@ -43,8 +44,9 @@ class Requirement(models.Model):
     assignee = models.ForeignKey(Member, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='负责人')
     module = models.CharField('模块', max_length=64, blank=True)
     progress = models.IntegerField('进度%', default=0)
-    est_effort = models.FloatField('预计工时(h)', default=0)
-    actual_effort = models.FloatField('实际工时(h)', default=0)
+    last_status_change_at = models.DateTimeField('状态变更时间', null=True, blank=True)
+    est_effort = models.FloatField('预计工时(h)', default=0, validators=[MinValueValidator(0)])
+    actual_effort = models.FloatField('实际工时(h)', default=0, validators=[MinValueValidator(0)])
     planned_start = models.DateField('预计开始', null=True, blank=True)
     planned_end = models.DateField('预计结束', null=True, blank=True)
     note = models.TextField('备注', blank=True)
@@ -60,6 +62,19 @@ class Requirement(models.Model):
         verbose_name = '需求'
         verbose_name_plural = '需求'
         ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        # done 完成定义:已上线 → 进度强制 100
+        if self.status == self.STATUS_DONE:
+            self.progress = 100
+        # 状态变更历史:检测 status 变化才刷新时间戳
+        if self.pk:
+            old = Requirement.objects.filter(pk=self.pk).only('status').first()
+            if old and old.status != self.status:
+                self.last_status_change_at = timezone.now()
+        elif self.last_status_change_at is None:
+            self.last_status_change_at = timezone.now()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title
