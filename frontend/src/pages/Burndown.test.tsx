@@ -4,30 +4,15 @@ import Burndown from './Burndown'
 
 vi.mock('../api', () => ({
   api: {
-    sprints: {
-      list: vi.fn().mockResolvedValue([
-        { id: 1, name: 'S1', start_date: '2026-07-01', end_date: '2026-07-14', is_active: true, weeks: 2 }
-      ])
-    },
-    burndown: vi.fn().mockResolvedValue({
-      sprint: { id: 1, name: 'S1', start_date: '2026-07-01', end_date: '2026-07-14' },
-      total_effort: 15,
-      snapshots: [
-        { date: '2026-07-01', remaining_effort: 15 },
-        { date: '2026-07-04', remaining_effort: 10 },
-        { date: '2026-07-08', remaining_effort: 5 }
-      ]
-    })
+    requirements: { list: vi.fn().mockResolvedValue([]) },
+    members: { list: vi.fn().mockResolvedValue([{ id:1, name:'张三', week_capacity:40, modules:'', active:true }]) },
+    snapshots: vi.fn().mockResolvedValue([]),
   },
 }))
 
 describe('Burndown', () => {
-  it('shows total effort and displays burndown chart', async () => {
+  it('无需求时显示提示', async () => {
     render(<Burndown />)
-    await waitFor(() => {
-      expect(screen.getByText(/总工时:.*15h/)).toBeInTheDocument()
-      expect(screen.getByText(/剩余:.*5h/)).toBeInTheDocument()
-    })
-    await waitFor(() => expect(screen.getByText('燃尽图')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('暂无需求数据')).toBeInTheDocument())
   })
 })

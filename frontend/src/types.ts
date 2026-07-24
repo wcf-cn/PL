@@ -9,15 +9,6 @@ export interface Member {
   active:boolean
 }
 
-export interface Sprint {
-  id:number;
-  name:string;
-  start_date:string;
-  end_date:string;
-  is_active:boolean;
-  weeks:number
-}
-
 export interface Requirement {
   id:number;
   title:string;
@@ -29,20 +20,10 @@ export interface Requirement {
   progress:number;
   est_effort:number;
   actual_effort:number;
-  assigned_sprint:number|null;
-  sprint_name?:string;
   planned_start:string|null;
   planned_end:string|null;
   note:string;
   parent: number | null;
-}
-
-export interface CapacityRow {
-  member_id:number;
-  member:string;
-  capacity:number;
-  load:number;
-  utilization:number
 }
 
 export interface Milestone {
@@ -52,24 +33,6 @@ export interface Milestone {
   date:string;
   note:string;
   created_at:string;
-}
-
-export interface BurndownSnapshot {
-  date:string;
-  remaining_effort:number;
-}
-
-export interface BurndownSprint {
-  id:number;
-  name:string;
-  start_date:string;
-  end_date:string;
-}
-
-export interface BurndownData {
-  sprint:BurndownSprint;
-  total_effort:number;
-  snapshots:BurndownSnapshot[];
 }
 
 export const STATUS_LABEL: Record<Status,string> = {
@@ -84,8 +47,6 @@ export const STATUS_LABEL: Record<Status,string> = {
 
 export const STATUS_ORDER: Status[] = ['backlog','scheduled','in_progress','testing','done','blocked','paused']
 
-export const calcProgress = (est: number, actual: number) => est > 0 ? Math.round(actual / est * 100) : 0
-
 export interface ChatMessage { role: 'user' | 'assistant' | 'system'; content: string }
 export interface Draft {
   title: string
@@ -93,7 +54,6 @@ export interface Draft {
   priority?: string
   module?: string
   est_effort?: number
-  assigned_sprint?: number | null
   assignee?: number | null
   parent?: number | null
 }

@@ -7,17 +7,14 @@ vi.mock('../api', () => ({
   api: {
     requirements: {
       list: vi.fn().mockResolvedValue([
-        { id:1, title:'登录', status:'in_progress', priority:'P0', assignee_name:'张三', est_effort:8, actual_effort:4, progress:50, planned_start:'2026-01-01', planned_end:'2026-01-15' },
+        { id:1, title:'登录', status:'in_progress', priority:'P0', assignee:1, assignee_name:'张三', module:'', est_effort:8, actual_effort:4, progress:50, planned_start:'2026-01-01', planned_end:'2026-01-15', parent:null, note:'' },
       ]),
-      update: vi.fn().mockResolvedValue({ id:1, title:'登录', status:'in_progress', priority:'P0', assignee_name:'张三', est_effort:8, actual_effort:4, progress:50, planned_start:'2026-01-01', planned_end:'2026-01-15' }),
-      create: vi.fn().mockResolvedValue({ id:99, title:'新需求', status:'backlog', priority:'P1', assignee:1, assignee_name:'张三', module:'', est_effort:4, actual_effort:0, progress:0, planned_start:null, planned_end:null, assigned_sprint:null }),
+      update: vi.fn().mockResolvedValue({ id:1, title:'登录', status:'in_progress', priority:'P0', assignee:1, assignee_name:'张三', module:'', est_effort:8, actual_effort:4, progress:50, planned_start:'2026-01-01', planned_end:'2026-01-15', parent:null, note:'' }),
+      create: vi.fn().mockResolvedValue({ id:99, title:'新需求', status:'backlog', priority:'P1', assignee:1, assignee_name:'张三', module:'', est_effort:4, actual_effort:0, progress:0, planned_start:null, planned_end:null, parent:null, note:'' }),
     },
     members: { list: vi.fn().mockResolvedValue([
       { id:1, name:'张三', week_capacity:40, modules:'', active:true },
       { id:2, name:'李四', week_capacity:40, modules:'', active:true },
-    ])},
-    sprints: { list: vi.fn().mockResolvedValue([
-      { id:1, name:'S1', start_date:'2026-01-01', end_date:'2026-01-14', is_active:true, weeks:2 },
     ])},
     milestones: {
       list: vi.fn().mockResolvedValue([]),
@@ -36,56 +33,28 @@ describe('Board', () => {
   it('creates a new requirement', async () => {
     const { api } = await import('../api')
     render(<Board />)
-
     await waitFor(() => expect(screen.getByText('+ 新建需求')).toBeInTheDocument())
-
     const user = userEvent.setup()
     await user.click(screen.getByText('+ 新建需求'))
-
-    const titleInput = screen.getByPlaceholderText('请输入标题')
-    await user.type(titleInput, '新需求')
-
-    const submitButton = screen.getByRole('button', { name: '提交' })
-    await user.click(submitButton)
-
+    await user.type(screen.getByPlaceholderText('请输入标题'), '新需求')
+    await user.click(screen.getByRole('button', { name: '提交' }))
     await waitFor(() => {
       expect(api.requirements.create).toHaveBeenCalledWith({
-        title: '新需求',
-        status: 'backlog',
-        priority: 'P1',
-        assignee: null,
-        module: '',
-        est_effort: 0,
-        actual_effort: 0,
-        progress: 0,
-        planned_start: null,
-        planned_end: null,
-        assigned_sprint: null
+        title: '新需求', status: 'backlog', priority: 'P1', assignee: null, module: '',
+        est_effort: 0, actual_effort: 0, progress: 0, planned_start: null, planned_end: null,
       })
     })
-
-    await waitFor(() => {
-      expect(screen.getByText('新需求')).toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.getByText('新需求')).toBeInTheDocument())
   })
 
   it('opens edit form on double-click', async () => {
     render(<Board />)
-
     await waitFor(() => expect(screen.getByText('登录')).toBeInTheDocument())
-
     const user = userEvent.setup()
-    const loginCard = screen.getByText('登录')
-    await user.dblClick(loginCard)
-
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('登录')).toBeInTheDocument()
-    })
+    await user.dblClick(screen.getByText('登录'))
+    await waitFor(() => expect(screen.getByDisplayValue('登录')).toBeInTheDocument())
     expect(screen.getByText('编辑需求')).toBeInTheDocument()
-
-    // Check that the new fields appear in the edit form
     expect(screen.getByText('已投入时间h')).toBeInTheDocument()
-    expect(screen.getByText('计划开始')).toBeInTheDocument()
-    expect(screen.getByText('计划结束')).toBeInTheDocument()
+    expect(screen.getByText('进度')).toBeInTheDocument()
   })
 })

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
-import { STATUS_LABEL, STATUS_ORDER, calcProgress, type Requirement, type Status, type Member, type Sprint, type Priority } from '../types'
+import { STATUS_LABEL, STATUS_ORDER, type Requirement, type Status, type Member, type Priority } from '../types'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
@@ -20,7 +20,6 @@ const PRIO_VARIANT: Record<string, "default" | "secondary" | "destructive" | "ou
 export default function Board() {
   const [items, setItems] = useState<Requirement[]>([])
   const [members, setMembers] = useState<Member[]>([])
-  const [, setSprints] = useState<Sprint[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [milestones, setMilestones] = useState<any[]>([])
@@ -35,13 +34,11 @@ export default function Board() {
   useEffect(() => {
     load()
     api.members.list().then(setMembers)
-    api.sprints.list().then(setSprints)
   }, [])
   const onDrop = async (status: Status, id: number) => {
     const r = items.find(x => x.id === id); if (!r || r.status === status) return
-    const newProgress = calcProgress(r.est_effort, r.actual_effort)
-    setItems(prev => prev.map(x => x.id === id ? { ...x, status, progress: newProgress } : x))
-    await api.requirements.update(id, { status, progress: newProgress })
+    setItems(prev => prev.map(x => x.id === id ? { ...x, status } : x))
+    await api.requirements.update(id, { status })
   }
 
   const loadMilestones = async (reqId: number) => {
@@ -63,9 +60,9 @@ export default function Board() {
       module: item.module,
       est_effort: String(item.est_effort),
       actual_effort: String(item.actual_effort || 0),
+      progress: item.progress,
       planned_start: item.planned_start || '',
       planned_end: item.planned_end || '',
-      assigned_sprint: item.assigned_sprint
     })
     setShowForm(true)
     loadMilestones(item.id)
@@ -76,7 +73,7 @@ export default function Board() {
     setEditingId(null)
     setMilestones([])
     setError('')
-    setForm({ title: '', status: 'backlog', priority: 'P1', assignee: null, module: '', est_effort: '', actual_effort: '', planned_start: '', planned_end: '', assigned_sprint: null })
+    setForm({ title: '', status: 'backlog', priority: 'P1', assignee: null, module: '', est_effort: '', actual_effort: '', progress: 0, planned_start: '', planned_end: '' })
     setMTitle(''); setMDate(''); setMNote('')
   }
 
@@ -115,7 +112,7 @@ export default function Board() {
 
   const openCreate = () => {
     setEditingId(null)
-    setForm({ title: '', status: 'backlog', priority: 'P1', assignee: null, module: '', est_effort: '', actual_effort: '', planned_start: '', planned_end: '', assigned_sprint: null })
+    setForm({ title: '', status: 'backlog', priority: 'P1', assignee: null, module: '', est_effort: '', actual_effort: '', progress: 0, planned_start: '', planned_end: '' })
     setMilestones([])
     setError('')
     setShowForm(true)
@@ -129,9 +126,9 @@ export default function Board() {
     module: '',
     est_effort: '',
     actual_effort: '',
+    progress: 0 as number,
     planned_start: '',
     planned_end: '',
-    assigned_sprint: null as number | null
   })
 
   const createReq = async (e: React.FormEvent) => {
@@ -148,10 +145,9 @@ export default function Board() {
         module: form.module || '',
         est_effort: est,
         actual_effort: actual,
-        progress: calcProgress(est, actual),
+        progress: form.progress,
         planned_start: form.planned_start || null,
         planned_end: form.planned_end || null,
-        assigned_sprint: form.assigned_sprint
       }
       if (editingId) {
         const updated = await api.requirements.update(editingId, payload)
@@ -279,6 +275,17 @@ export default function Board() {
                     onChange={e => setForm({...form, actual_effort: e.target.value})}
                     placeholder="0"
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="progress">进度</Label>
+                  <Select value={String(form.progress)} onValueChange={(v) => setForm({...form, progress: Number(v)})}>
+                    <SelectTrigger id="progress">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[0,25,50,75,100].map(p => <SelectItem key={p} value={String(p)}>{p}%</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="planned_start">计划开始</Label>
@@ -428,7 +435,7 @@ function RequirementCard({ requirement, allItems, onEdit, selectMode, selected, 
           <span>{requirement.assignee_name||'未分配'}</span>
           <span>预计 {requirement.est_effort}h</span>
           {requirement.actual_effort > 0 && <span>/ 已投 {requirement.actual_effort}h</span>}
-          <span>{calcProgress(requirement.est_effort, requirement.actual_effort)}%</span>
+          <span>{requirement.progress}%</span>
           {(requirement.planned_start || requirement.planned_end) && (
             <span>{requirement.planned_start || '?'}~{requirement.planned_end || '?'}</span>
           )}
