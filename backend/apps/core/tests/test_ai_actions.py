@@ -1,18 +1,17 @@
 import pytest
-from apps.core.models import Member, Sprint, Requirement
+from apps.core.models import Member, Requirement
 from apps.core.ai_actions import execute_action
-from datetime import date
+
 
 @pytest.fixture
 def setup_data():
     m = Member.objects.create(name="张三", week_capacity=40)
-    s = Sprint.objects.create(name="S1", start_date=date(2026,7,6), end_date=date(2026,7,20))
-    r = Requirement.objects.create(title="登录接口", assignee=m, assigned_sprint=s, status="backlog")
-    return m, s, r
+    r = Requirement.objects.create(title="登录接口", assignee=m, status="backlog")
+    return m, r
 
 @pytest.mark.django_db
 def test_update_requirement_by_title(setup_data):
-    m, s, r = setup_data
+    m, r = setup_data
     result = execute_action({"type": "update_requirement", "match": {"title": "登录接口"}, "fields": {"status": "in_progress", "assignee": "张三"}})
     assert result["success"] is True
     r.refresh_from_db()
@@ -26,7 +25,7 @@ def test_update_requirement_not_found():
 
 @pytest.mark.django_db
 def test_create_requirement(setup_data):
-    result = execute_action({"type": "create_requirement", "params": {"title": "支付接口", "assignee": "张三", "assigned_sprint": "S1"}})
+    result = execute_action({"type": "create_requirement", "params": {"title": "支付接口", "assignee": "张三"}})
     assert result["success"] is True
     assert Requirement.objects.filter(title="支付接口").exists()
 

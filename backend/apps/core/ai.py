@@ -44,12 +44,11 @@ def parse_actions(text):
 def strip_actions_block(text):
     return re.sub(r"```actions\s*\[.*?\]\s*```", "", text, flags=re.DOTALL).strip()
 
-def build_system_prompt(members, sprints, modules):
+def build_system_prompt(members, modules):
     m_list = ", ".join(f'{x["name"]}(id:{x["id"]})' for x in members) or "无"
-    s_list = ", ".join(f'{x["name"]}(id:{x["id"]}{"活跃" if x.get("is_active") else ""})' for x in sprints) or "无"
     mod_list = ", ".join(modules) if modules else "无"
     return f"""你是 PL(技术主管)的分析助手。用户描述一个问题/需求,你帮深度拆解。
-现有团队成员:{m_list};迭代:{s_list};模块:{mod_list}。
+现有团队成员:{m_list};模块:{mod_list}。
 分析框架:
 1. 先理解问题(现象+根因方向)
 2. 列出决策点(模型/算法/逻辑/数据/测试/前端/后端——哪些要改)
@@ -64,9 +63,8 @@ def build_system_prompt(members, sprints, modules):
 你也可以帮用户操作看板数据。用户说自然语言指令(如"把登录接口分配给张三"),你在回复末尾用 ```actions 返回操作建议。
 可用操作:
 - update_requirement: {{"type":"update_requirement","match":{{"title":"xxx"}},"fields":{{"status":"in_progress","assignee":"张三","priority":"P0"}},"description":"人话描述"}}
-- create_requirement: {{"type":"create_requirement","params":{{"title":"xxx","assignee":"张三","assigned_sprint":"S1"}},"description":"..."}}
+- create_requirement: {{"type":"create_requirement","params":{{"title":"xxx","assignee":"张三"}},"description":"..."}}
 - delete_requirement: {{"type":"delete_requirement","match":{{"title":"xxx"}},"description":"..."}}
 - update_member: {{"type":"update_member","match":{{"name":"张三"}},"fields":{{"week_capacity":35}},"description":"..."}}
 - create_member: {{"type":"create_member","params":{{"name":"李四","week_capacity":40,"modules":"前端"}},"description":"添加成员李四"}}
-- create_sprint: {{"type":"create_sprint","params":{{"name":"2026-W28","start_date":"2026-07-20","end_date":"2026-08-03"}},"description":"创建迭代"}}
 返回的是建议(未执行),用户确认后才执行。"""

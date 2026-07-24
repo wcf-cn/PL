@@ -16,24 +16,6 @@ class Member(models.Model):
     def __str__(self):
         return self.name
 
-class Sprint(models.Model):
-    name = models.CharField('迭代', max_length=64)
-    start_date = models.DateField('开始日')
-    end_date = models.DateField('结束日')
-    is_active = models.BooleanField('当前迭代', default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        verbose_name = '迭代'
-        verbose_name_plural = '迭代'
-        ordering = ['-start_date']
-
-    def __str__(self):
-        return self.name
-
-    @property
-    def weeks(self):
-        return (self.end_date - self.start_date).days / 7
 
 class Requirement(models.Model):
     STATUS_BACKLOG = 'backlog'
@@ -62,7 +44,6 @@ class Requirement(models.Model):
     progress = models.IntegerField('进度%', default=0)
     est_effort = models.FloatField('预计工时(h)', default=0)
     actual_effort = models.FloatField('实际工时(h)', default=0)
-    assigned_sprint = models.ForeignKey(Sprint, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='所属迭代')
     planned_start = models.DateField('预计开始', null=True, blank=True)
     planned_end = models.DateField('预计结束', null=True, blank=True)
     note = models.TextField('备注', blank=True)
@@ -79,20 +60,6 @@ class Requirement(models.Model):
     def __str__(self):
         return self.title
 
-class BurndownSnapshot(models.Model):
-    sprint = models.ForeignKey(Sprint, on_delete=models.CASCADE, verbose_name='迭代')
-    date = models.DateField('日期')
-    remaining_effort = models.FloatField('剩余工时(h)', default=0)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        verbose_name = '燃尽图快照'
-        verbose_name_plural = '燃尽图快照'
-        unique_together = ('sprint', 'date')
-        ordering = ['date']
-
-    def __str__(self):
-        return f'{self.sprint.name} - {self.date}'
 
 class Milestone(models.Model):
     requirement = models.ForeignKey(Requirement, on_delete=models.CASCADE, verbose_name='需求')

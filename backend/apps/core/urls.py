@@ -1,19 +1,16 @@
 from rest_framework.routers import DefaultRouter
 from django.urls import path
-from .views import MemberViewSet, SprintViewSet, RequirementViewSet, MilestoneViewSet, capacity_view, login_view, logout_view, me_view, burndown_view, ai_chat, ai_execute, snapshots_view
+from .views import MemberViewSet, RequirementViewSet, MilestoneViewSet, login_view, logout_view, me_view, ai_chat, ai_execute, snapshots_view
 
 router = DefaultRouter()
 router.register('members', MemberViewSet)
-router.register('sprints', SprintViewSet)
 router.register('requirements', RequirementViewSet)
 router.register('milestones', MilestoneViewSet)
 
-urlpatterns = router.urls + [path('capacity/', capacity_view)]
-urlpatterns += [
+urlpatterns = router.urls + [
     path('auth/login', login_view),
     path('auth/logout', logout_view),
     path('auth/me', me_view),
-    path('burndown/', burndown_view),
     path('ai/chat/', ai_chat),
     path('ai/execute/', ai_execute),
     path('snapshots/', snapshots_view),

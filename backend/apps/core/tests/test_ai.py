@@ -24,10 +24,9 @@ def test_strip_json_block_removes_json():
 def test_build_system_prompt_has_analysis_framework():
     prompt = build_system_prompt(
         [{"id":1,"name":"张三"}],
-        [{"id":1,"name":"S1","is_active":True}],
         ["后端","前端"]
     )
-    assert "张三" in prompt and "S1" in prompt and "后端" in prompt
+    assert "张三" in prompt and "后端" in prompt
     assert "决策点" in prompt
     assert "parent" in prompt and "children" in prompt
 

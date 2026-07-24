@@ -11,7 +11,7 @@ def test_admin_requires_login():
 @pytest.mark.django_db
 def test_admin_models_registered():
     from django.contrib import admin as djadmin
-    from apps.core.models import Member, Sprint, Requirement
+    from apps.core.models import Member, Requirement, Milestone
     assert Member in djadmin.site._registry
-    assert Sprint in djadmin.site._registry
     assert Requirement in djadmin.site._registry
+    assert Milestone in djadmin.site._registry

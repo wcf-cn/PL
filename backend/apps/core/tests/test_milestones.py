@@ -1,7 +1,7 @@
 import pytest
 from datetime import date
 from rest_framework.test import APIClient
-from apps.core.models import Member, Sprint, Requirement, Milestone
+from apps.core.models import Member, Requirement, Milestone
 
 @pytest.fixture
 def client():
@@ -13,10 +13,9 @@ def client():
 
 @pytest.mark.django_db
 def test_milestone_create_and_list(client):
-    # Setup: create member, sprint, requirement
+    # Setup: create member and requirement
     m = Member.objects.create(name='张三', week_capacity=40)
-    s = Sprint.objects.create(name='S1', start_date=date(2026,7,6), end_date=date(2026,7,20))
-    req = Requirement.objects.create(title='登录功能', assignee=m, assigned_sprint=s, est_effort=60)
+    req = Requirement.objects.create(title='登录功能', assignee=m, est_effort=60)
 
     # Create milestone via API
     payload = {
@@ -39,10 +38,9 @@ def test_milestone_create_and_list(client):
 
 @pytest.mark.django_db
 def test_milestone_cascade_delete(client):
-    # Setup: create member, sprint, requirement with milestone
+    # Setup: create member and requirement with milestone
     m = Member.objects.create(name='李四', week_capacity=40)
-    s = Sprint.objects.create(name='S2', start_date=date(2026,7,1), end_date=date(2026,7,15))
-    req = Requirement.objects.create(title='支付功能', assignee=m, assigned_sprint=s, est_effort=80)
+    req = Requirement.objects.create(title='支付功能', assignee=m, est_effort=80)
     ms = Milestone.objects.create(requirement=req, title='设计完成', date=date(2026,7,5), note='UI设计')
 
     # Delete requirement should cascade delete milestone
