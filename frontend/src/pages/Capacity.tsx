@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table'
 import { Badge } from '../components/ui/badge'
 
+// D6: 名义产能折算为实际可用产能(扣会议/CR/支援/面试等非项目时间)。可调。
+const PRODUCTIVITY_FACTOR = 0.7
+
 function daysBetween(a: string, b: string) {
   return Math.max(1, Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000))
 }
@@ -20,8 +23,10 @@ export default function Capacity() {
 
   const rows = useMemo(() => {
     const today = new Date().toISOString().split('T')[0]
+    // A1: 只算叶子(无子任务)
+    const leaves = reqs.filter(r => !reqs.some(c => c.parent === r.id))
     return members.filter(m => m.active).map(m => {
-      const myReqs = reqs.filter(r => r.assignee === m.id && !['done', 'paused'].includes(r.status))
+      const myReqs = leaves.filter(r => r.assignee === m.id && !['done', 'paused'].includes(r.status))
       // 有计划日期的:按天分摊
       const scheduled = myReqs.filter(r => r.planned_start && r.planned_end)
       const unscheduled = myReqs.filter(r => !r.planned_start || !r.planned_end)
@@ -49,14 +54,16 @@ export default function Capacity() {
       const unscheduledTotal = unscheduled.reduce((s, r) => s + r.est_effort, 0)
       const currentWeekly = todayLoad * 5
       const cap = m.week_capacity
+      // D6: 实际可用 = 名义 × 折算系数,让 >100% 在真实负载下触发
+      const effectiveCap = cap * PRODUCTIVITY_FACTOR
 
       return {
         member_id: m.id, member: m.name, capacity: cap,
         currentWeekly: Math.round(currentWeekly),
         peakWeekly: Math.round(peakWeekly),
         unscheduled: Math.round(unscheduledTotal),
-        utilization: cap > 0 ? currentWeekly / cap : 0,
-        peakUtil: cap > 0 ? peakWeekly / cap : 0,
+        utilization: effectiveCap > 0 ? currentWeekly / effectiveCap : 0,
+        peakUtil: effectiveCap > 0 ? peakWeekly / effectiveCap : 0,
       }
     }).sort((a, b) => b.peakUtil - a.peakUtil)
   }, [members, reqs])
@@ -114,7 +121,7 @@ export default function Capacity() {
           <p>📊 <b>本周负载</b>:今天在 planned_start~end 范围内的需求,工时按天分摊后 ×5(工作日)</p>
           <p>📊 <b>峰值周</b>:所有日期中日负载最高的 ×5。红色=超容量</p>
           <p>📊 <b>未排期</b>:在途但没填计划日期的需求工时合计(不参与负载计算)</p>
-          <p>绿色 &lt;80% · 黄色 80–100% · 红色 &gt;100%</p>
+          <p>绿色 &lt;80% · 黄色 80–100% · 红色 &gt;100%(利用率按实际可用产能 = 名义 × {PRODUCTIVITY_FACTOR} 折算)</p>
         </div>
       </CardContent>
     </Card>
