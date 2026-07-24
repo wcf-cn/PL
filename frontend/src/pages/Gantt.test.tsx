@@ -24,6 +24,7 @@ vi.mock('../api', () => ({
         },
       ]),
     },
+    versions: { list: vi.fn().mockResolvedValue([]) },
   },
 }))
 

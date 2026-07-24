@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
-import { STATUS_LABEL, STATUS_ORDER, type Requirement, type Status, type Member, type Priority } from '../types'
+import { STATUS_LABEL, STATUS_ORDER, type Requirement, type Status, type Member, type Priority, type Version } from '../types'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
@@ -20,6 +20,8 @@ const PRIO_VARIANT: Record<string, "default" | "secondary" | "destructive" | "ou
 export default function Board() {
   const [items, setItems] = useState<Requirement[]>([])
   const [members, setMembers] = useState<Member[]>([])
+  const [versions, setVersions] = useState<Version[]>([])
+  const [versionFilter, setVersionFilter] = useState<number | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [milestones, setMilestones] = useState<any[]>([])
@@ -34,6 +36,7 @@ export default function Board() {
   useEffect(() => {
     load()
     api.members.list().then(setMembers)
+    api.versions.list().then(setVersions)
   }, [])
   const onDrop = async (status: Status, id: number) => {
     const r = items.find(x => x.id === id); if (!r || r.status === status) return
@@ -192,6 +195,13 @@ export default function Board() {
         {selectMode && selectedIds.size > 0 && (
           <Button variant="destructive" onClick={batchDelete}>批量删除({selectedIds.size})</Button>
         )}
+        <Select value={versionFilter?.toString() ?? ''} onValueChange={(v) => setVersionFilter(v ? Number(v) : null)}>
+          <SelectTrigger id="version-filter" className="w-32"><SelectValue placeholder="全部版本" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">全部版本</SelectItem>
+            {versions.map(v => <SelectItem key={v.id} value={v.id.toString()}>{v.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
 
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) closeForm() }}>
@@ -364,7 +374,7 @@ export default function Board() {
 
       <div className="flex gap-3 overflow-x-auto pb-4">
         {STATUS_ORDER.filter(st => showDone || st !== 'done').map(st => (
-          <Column key={st} status={st} items={items.filter(r => r.status === st && !r.parent)} allItems={items} onDrop={onDrop} onEdit={startEdit} selectMode={selectMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} />
+          <Column key={st} status={st} items={items.filter(r => r.status === st && !r.parent && (versionFilter === null || r.version === versionFilter))} allItems={items} onDrop={onDrop} onEdit={startEdit} selectMode={selectMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} />
         ))}
       </div>
     </div>

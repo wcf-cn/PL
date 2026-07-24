@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { api } from '../api'
-import { STATUS_LABEL, type Requirement, type Status } from '../types'
+import { STATUS_LABEL, type Requirement, type Status, type Version } from '../types'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
@@ -25,6 +25,7 @@ const COLLAPSE_MARKER_WIDTH = 96
 
 export default function Gantt() {
   const [reqs, setReqs] = useState<Requirement[]>([])
+  const [versions, setVersions] = useState<Version[]>([])
   const [dragging, setDragging] = useState<{id: number, origStart: string, origEnd: string, newStart: string, newEnd: string} | null>(null)
   const [axisExpanded, setAxisExpanded] = useState(false)
   const [expandedGaps, setExpandedGaps] = useState<Set<string>>(new Set())
@@ -33,6 +34,7 @@ export default function Gantt() {
 
   useEffect(() => {
     api.requirements.list().then(setReqs)
+    api.versions.list().then(setVersions)
   }, [])
 
   // Measure container width for adaptive day width
@@ -264,7 +266,7 @@ export default function Gantt() {
 
         <div ref={timelineRef} className="relative border-l border-r border-b rounded-lg overflow-x-auto bg-muted/30">
           <div
-            className="border-b"
+            className="border-b relative"
             style={{
               width: `${timelineWidth}px`,
               minWidth: '100%',
@@ -307,6 +309,22 @@ export default function Gantt() {
                 }
               })}
             </div>
+            {versions.flatMap(v => (
+              ([
+                ['integration_date', v.integration_date, '联调', '#3b82f6'],
+                ['freeze_date', v.freeze_date, '封板', '#f59e0b'],
+                ['test_date', v.test_date, '转测', '#a855f7'],
+                ['release_date', v.release_date, '发布', '#ef4444'],
+              ] as const).filter(([, d]) => d).map(([key, d, label, color]) => {
+                const x = dayToX(position(d!))
+                return (
+                  <div key={`${v.id}-${key}`} className="absolute top-0 bottom-0 pointer-events-none"
+                       style={{ left: `${x}px`, borderLeft: `2px dashed ${color}` }}>
+                    <span className="absolute -top-0 left-1 text-[9px] whitespace-nowrap" style={{ color }}>{label}</span>
+                  </div>
+                )
+              })
+            ))}
             {assigneeNames.map(assigneeName => (
               <div key={assigneeName}>
                 <div className="bg-muted/50 px-2 py-1 text-sm font-bold border-b flex items-center gap-2">
