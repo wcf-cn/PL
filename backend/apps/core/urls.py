@@ -1,6 +1,6 @@
 from rest_framework.routers import DefaultRouter
 from django.urls import path
-from .views import MemberViewSet, RequirementViewSet, MilestoneViewSet, VersionViewSet, login_view, logout_view, me_view, ai_chat, ai_execute, snapshots_view
+from .views import MemberViewSet, RequirementViewSet, MilestoneViewSet, VersionViewSet, login_view, logout_view, me_view, ai_chat, ai_execute, snapshots_view, export_requirements
 
 router = DefaultRouter()
 router.register('members', MemberViewSet)
@@ -15,4 +15,5 @@ urlpatterns = router.urls + [
     path('ai/chat/', ai_chat),
     path('ai/execute/', ai_execute),
     path('snapshots/', snapshots_view),
+    path('export/requirements.csv', export_requirements),
 ]

@@ -199,6 +199,7 @@ export default function Board() {
         <Button variant="outline" onClick={() => setShowDone(!showDone)}>
           {showDone ? '隐藏已上线' : '显示已上线'}
         </Button>
+        <Button variant="outline" onClick={() => window.open('/api/export/requirements.csv')}>导出CSV</Button>
         <Button variant={selectMode ? 'default' : 'outline'} onClick={() => selectMode ? exitSelect() : setSelectMode(true)}>
           {selectMode ? '取消选择' : '选择'}
         </Button>

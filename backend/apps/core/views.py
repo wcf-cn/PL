@@ -5,6 +5,8 @@ from rest_framework.permissions import AllowAny
 from django.contrib.auth import authenticate, login as django_login, logout as django_logout
 from django.utils import timezone
 from django.db.models import Count
+from django.http import HttpResponse
+import csv
 from .models import Member, Requirement, Milestone, MemberDailySnapshot, Version
 from .serializers import MemberSerializer, RequirementSerializer, MilestoneSerializer, VersionSerializer
 from .ai import chat_with_glm, parse_drafts, strip_json_block, build_system_prompt, parse_actions, strip_actions_block
@@ -111,3 +113,23 @@ def snapshots_view(request):
         'member': s.member.name,
         'remaining_effort': s.remaining_effort,
     } for s in snaps])
+
+
+@api_view(['GET'])
+def export_requirements(request):
+    """导出全量需求为 CSV(IsAuthenticated)。"""
+    resp = HttpResponse(content_type='text/csv')
+    resp['Content-Disposition'] = 'attachment; filename="requirements.csv"'
+    w = csv.writer(resp)
+    w.writerow(['id', '标题', '状态', '优先级', '负责人', '模块', '版本',
+                '预计工时', '实际工时', '进度', '计划开始', '计划结束', '更新时间'])
+    for r in Requirement.objects.select_related('assignee', 'version'):
+        w.writerow([
+            r.id, r.title, r.get_status_display(), r.priority,
+            r.assignee.name if r.assignee else '', r.module,
+            r.version.name if r.version else '',
+            r.est_effort, r.actual_effort, r.progress,
+            r.planned_start or '', r.planned_end or '',
+            r.updated_at.strftime('%Y-%m-%d'),
+        ])
+    return resp
