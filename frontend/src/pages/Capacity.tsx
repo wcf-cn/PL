@@ -37,10 +37,16 @@ export default function Capacity() {
       const scheduled = myReqs.filter(r => r.planned_start && r.planned_end)
       const unscheduled = myReqs.filter(r => !r.planned_start || !r.planned_end)
 
-      // 本周负载:本周(weekStart~weekEnd)与 planned 区间有重叠的需求,贡献其日速率(×5 换算成周)
+      // 本周负载:按本周(weekStart~weekEnd)与 planned 区间的【实际重叠天数】精确累加 daily×overlapDays
       const todayLoad = scheduled
         .filter(r => r.planned_start! <= weekEndStr && r.planned_end! >= weekStartStr)
-        .reduce((s, r) => s + r.est_effort / daysBetween(r.planned_start!, r.planned_end!), 0)
+        .reduce((s, r) => {
+          const daily = r.est_effort / daysBetween(r.planned_start!, r.planned_end!)
+          const ovStart = Math.max(new Date(r.planned_start!).getTime(), weekStart.getTime())
+          const ovEnd = Math.min(new Date(r.planned_end!).getTime(), weekEnd.getTime())
+          const overlapDays = Math.max(0, Math.round((ovEnd - ovStart) / 86400000) + 1) // 含首尾
+          return s + daily * overlapDays
+        }, 0)
 
       // 峰值周负载:遍历所有日期,找最大的日负载×5(工作日)
       const dailyLoads: Record<string, number> = {}
@@ -58,7 +64,7 @@ export default function Capacity() {
       const peakWeekly = peakDaily * 5
 
       const unscheduledTotal = unscheduled.reduce((s, r) => s + r.est_effort, 0)
-      const currentWeekly = todayLoad * 5
+      const currentWeekly = todayLoad
       const cap = m.week_capacity
       // D6: 实际可用 = 名义 × 折算系数,让 >100% 在真实负载下触发
       const effectiveCap = cap * PRODUCTIVITY_FACTOR
