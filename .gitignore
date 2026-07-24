@@ -10,6 +10,7 @@ venv/
 db.sqlite3
 media/
 staticfiles/
+backups/
 
 # Node / Vite
 node_modules/
