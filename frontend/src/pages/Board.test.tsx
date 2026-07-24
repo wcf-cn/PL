@@ -113,4 +113,20 @@ describe('Board', () => {
     await waitFor(() => expect(screen.getByText('编辑需求')).toBeInTheDocument())
     await waitFor(() => expect(screen.getByText(/超载/)).toBeInTheDocument())
   })
+
+  it('开发中超过 WIP 阈值时列头标红', async () => {
+    const { api } = await import('../api')
+    ;(api.requirements.list as any).mockResolvedValue(
+      Array.from({ length: 6 }, (_, i) => ({
+        id: i + 1, title: `需求${i}`, status: 'in_progress', priority: 'P1', assignee: 1, assignee_name: '张三',
+        module: '', est_effort: 4, actual_effort: 0, progress: 0, planned_start: null, planned_end: null,
+        parent: null, version: null, blocked_by: [], last_status_change_at: null, created_at: '', note: '',
+      }))
+    )
+    render(<Board />)
+    await waitFor(() => expect(screen.getByText('需求0')).toBeInTheDocument())
+    // 列头 "开发中" 的 Badge 应有红色 class(threshold=5, 6 条超限)
+    const header = screen.getByText('开发中').closest('div')
+    expect(header?.className).toMatch(/red|destructive|text-red/)
+  })
 })

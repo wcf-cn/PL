@@ -18,6 +18,8 @@ const PRIO_VARIANT: Record<string, "default" | "secondary" | "destructive" | "ou
   P2: 'secondary'
 }
 
+const WIP_LIMITS: Record<string, number> = { in_progress: 5, testing: 5 }
+
 export default function Board() {
   const [items, setItems] = useState<Requirement[]>([])
   const [members, setMembers] = useState<Member[]>([])
@@ -488,9 +490,9 @@ function Column({ status, items, allItems, onDrop, onEdit, selectMode, selectedI
         over && 'ring-2 ring-primary'
       )}
     >
-      <div className="flex justify-between items-center mb-3 pb-2 border-b">
+      <div className={`flex justify-between items-center mb-3 pb-2 border-b ${WIP_LIMITS[status] && items.length > WIP_LIMITS[status] ? 'text-red-600' : ''}`}>
         <h3 className="font-semibold">{STATUS_LABEL[status]}</h3>
-        <Badge variant="secondary">{items.length}</Badge>
+        <Badge variant={WIP_LIMITS[status] && items.length > WIP_LIMITS[status] ? 'destructive' : 'secondary'}>{items.length}{WIP_LIMITS[status] ? `/${WIP_LIMITS[status]}` : ''}</Badge>
       </div>
       <div
         onDrop={e=>{e.stopPropagation(); setOver(false); onDrop(status, Number((e as any).dataTransfer.getData('id')))}}
