@@ -1,0 +1,10 @@
+{
+  "name": "PL 看板",
+  "short_name": "PL看板",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "description": "个人 PL 需求+人力产能管理看板"
+}

@@ -171,4 +171,15 @@ describe('Board', () => {
     render(<Board />)
     await waitFor(() => expect(screen.getByText(/暂无需求/)).toBeInTheDocument())
   })
+
+  it('移动端 ←/→ 按钮改状态', async () => {
+    const { api } = await import('../api')
+    ;(api.requirements.list as any).mockResolvedValue([
+      { id:1, title:'待办', status:'backlog', priority:'P1', kind:'feature', assignee:1, assignee_name:'张三', module:'', est_effort:4, actual_effort:0, progress:0, planned_start:null, planned_end:null, parent:null, version:null, blocked_by:[], last_status_change_at:null, created_at:'', note:'' },
+    ])
+    render(<Board />)
+    await waitFor(() => expect(screen.getByText('待办')).toBeInTheDocument())
+    fireEvent.click(screen.getByText('排期中 →'))
+    await waitFor(() => expect(api.requirements.update).toHaveBeenCalledWith(1, { status: 'scheduled' }))
+  })
 })

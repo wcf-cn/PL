@@ -16,6 +16,7 @@ import Performance from './pages/Performance'
 import { Button } from './components/ui/button'
 import { cn } from './lib/utils'
 import AssistantWidget from './components/AssistantWidget'
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from './components/ui/dropdown-menu'
 
 const NAV_ITEMS = [
   { href: '#/board', label: '看板', icon: '📋' },
@@ -30,6 +31,8 @@ const NAV_ITEMS = [
   { href: '#/performance', label: '效能', icon: '📈' },
   { href: '#/team', label: '团队', icon: '👥' },
 ]
+// 移动端底部高频 5 项,其余收进"更多"
+const MOBILE_PRIMARY = ['board', 'focus', 'capacity', 'versions', 'team']
 
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null)
@@ -56,7 +59,7 @@ export default function App() {
                 <Route path="/estimation" element={<Estimation />} />
                 <Route path="/performance" element={<Performance />} />
                 <Route path="/team" element={<Team />} />
-                <Route path="*" element={<Navigate to="/board" />} />
+                <Route path="*" element={<Navigate to="/focus" />} />
               </>}
             </Routes>
           </main>
@@ -92,20 +95,38 @@ function TopNav({ onLogout }:{ onLogout:()=>void }) {
 function BottomTabBar() {
   const location = useLocation()
   const path = location.pathname
+  const primary = NAV_ITEMS.filter(it => MOBILE_PRIMARY.includes(it.href.replace('#/', '')))
+  const rest = NAV_ITEMS.filter(it => !MOBILE_PRIMARY.includes(it.href.replace('#/', '')))
+  const tabCls = (active: boolean) => cn(
+    'flex flex-col items-center justify-center flex-1 h-full text-xs gap-0.5',
+    active ? 'text-primary font-medium' : 'text-muted-foreground'
+  )
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-background border-t flex justify-around items-center md:hidden" style={{ height: 56 }}>
-      {NAV_ITEMS.map(item => {
+      {primary.map(item => {
         const active = path.includes(item.href.replace('#/', ''))
         return (
-          <a key={item.href} href={item.href} className={cn(
-            'flex flex-col items-center justify-center flex-1 h-full text-xs gap-0.5',
-            active ? 'text-primary font-medium' : 'text-muted-foreground'
-          )}>
+          <a key={item.href} href={item.href} className={tabCls(active)}>
             <span className="text-base leading-none">{item.icon}</span>
             <span>{item.label}</span>
           </a>
         )
       })}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button className={tabCls(false)}>
+            <span className="text-base leading-none">⋯</span>
+            <span>更多</span>
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent side="top" align="end" className="mb-1">
+          {rest.map(item => (
+            <DropdownMenuItem key={item.href} asChild>
+              <a href={item.href}>{item.icon} {item.label}</a>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </nav>
   )
 }
