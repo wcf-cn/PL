@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from '../components/ui/dropdown-menu'
 import { cn } from '../lib/utils'
 import { useLocalStorage } from '../lib/useLocalStorage'
+import { VersionFormDialog } from '../components/VersionFormDialog'
 
 const PRIO_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   P0: 'destructive',
@@ -46,6 +47,7 @@ export default function Board() {
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [quickTitle, setQuickTitle] = useState('')
+  const [showVersionForm, setShowVersionForm] = useState(false)
   // 智能默认:记忆最近用的模块/负责人/版本(新建时预填)
   const [lastModule, setLastModule] = useLocalStorage<string>('board:last-module', '')
   const [lastAssignee, setLastAssignee] = useLocalStorage<number | null>('board:last-assignee', null)
@@ -426,6 +428,9 @@ export default function Board() {
         </div>
       )}
 
+      <VersionFormDialog open={showVersionForm} version={null} onClose={() => setShowVersionForm(false)}
+        onSaved={(v) => { setVersions(prev => prev.some(x => x.id === v.id) ? prev : [...prev, v]); setForm(f => ({ ...f, version: v.id })) }} />
+
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) closeForm() }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -507,18 +512,8 @@ export default function Board() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="version">目标版本</Label>
-                  <Select value={form.version?.toString() || ''} onValueChange={async (v) => {
-                    if (v === '__new__') {
-                      const name = window.prompt('新版本名称')
-                      if (name && name.trim()) {
-                        try {
-                          const created = await api.versions.create({ name: name.trim() })
-                          setVersions(prev => [...prev, created])
-                          setForm(f => ({ ...f, version: created.id }))
-                        } catch { setError('创建版本失败') }
-                      }
-                      return
-                    }
+                  <Select value={form.version?.toString() || ''} onValueChange={(v) => {
+                    if (v === '__new__') { setShowVersionForm(true); return }
                     setForm({...form, version: v ? Number(v) : null})
                   }}>
                     <SelectTrigger id="version">

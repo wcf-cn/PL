@@ -2,103 +2,41 @@ import { useEffect, useState } from 'react'
 import { api } from '../api'
 import type { Version, Requirement } from '../types'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
-import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
-import { Label } from '../components/ui/label'
-import { Textarea } from '../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog'
+import { VersionFormDialog } from '../components/VersionFormDialog'
 
 const PHASE_DATES: Array<[keyof Version, string]> = [
-  ['integration_date', '联调'],
-  ['freeze_date', '封板'],
-  ['test_date', '转测'],
-  ['release_date', '发布'],
+  ['integration_date', '联调'], ['freeze_date', '封板'], ['test_date', '转测'], ['release_date', '发布'],
 ]
-
-const DATE_FIELDS: Array<[keyof Pick<Version,'integration_date'|'freeze_date'|'test_date'|'release_date'>, string]> = [
-  ['integration_date', '联调日'],
-  ['freeze_date', '封板日'],
-  ['test_date', '转测日'],
-  ['release_date', '发布日'],
-]
-
-function phaseVariant(p: string) {
-  if (p === '已发布') return 'secondary' as const
-  if (p === '规划中') return 'outline' as const
-  return 'default' as const
-}
-
-const emptyForm = { name: '', phase: '', integration_date: '', freeze_date: '', test_date: '', release_date: '', note: '' }
-type FormState = typeof emptyForm
 const PHASE_OPTIONS = ['', '规划中', '联调中', '封板', '转测中', '已发布']
 
 export default function Versions() {
   const [versions, setVersions] = useState<Version[]>([])
   const [reqs, setReqs] = useState<Requirement[]>([])
   const [showForm, setShowForm] = useState(false)
-  const [editingId, setEditingId] = useState<number | null>(null)
-  const [form, setForm] = useState<FormState>(emptyForm)
+  const [editingVersion, setEditingVersion] = useState<Version | null>(null)
   const [error, setError] = useState('')
 
   const load = () => api.versions.list().then(setVersions)
-  useEffect(() => {
-    load()
-    api.requirements.list().then(setReqs)
-  }, [])
+  useEffect(() => { load(); api.requirements.list().then(setReqs) }, [])
 
-  const closeForm = () => { setShowForm(false); setEditingId(null); setForm(emptyForm); setError('') }
-  const openCreate = () => { setEditingId(null); setForm(emptyForm); setShowForm(true) }
-  const startEdit = (v: Version) => {
-    setEditingId(v.id)
-    setForm({
-      name: v.name,
-      phase: v.phase || '',
-      integration_date: v.integration_date || '',
-      freeze_date: v.freeze_date || '',
-      test_date: v.test_date || '',
-      release_date: v.release_date || '',
-      note: v.note || '',
-    })
-    setShowForm(true)
+  const openCreate = () => { setEditingVersion(null); setShowForm(true) }
+  const startEdit = (v: Version) => { setEditingVersion(v); setShowForm(true) }
+  const onSaved = (v: Version) => {
+    setVersions(prev => prev.some(x => x.id === v.id) ? prev.map(x => x.id === v.id ? v : x) : [v, ...prev])
   }
-
-  const save = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!form.name.trim()) return
-    const payload = {
-      name: form.name.trim(),
-      phase: form.phase,
-      integration_date: form.integration_date || null,
-      freeze_date: form.freeze_date || null,
-      test_date: form.test_date || null,
-      release_date: form.release_date || null,
-      note: form.note,
-    }
-    try {
-      if (editingId) {
-        const updated = await api.versions.update(editingId, payload)
-        setVersions(prev => prev.map(v => v.id === editingId ? updated : v))
-      } else {
-        const created = await api.versions.create(payload)
-        setVersions(prev => [created, ...prev])
-      }
-      closeForm()
-    } catch (err: any) {
-      const d = err.response?.data
-      setError(typeof d === 'string' ? d : d?.detail
-        || (d && typeof d === 'object' && Object.entries(d).map(([f, e]) => `${f}: ${Array.isArray(e) ? (e as string[]).join(',') : e}`).join('; '))
-        || '保存失败')
-    }
-  }
-
   const del = async (id: number) => {
     if (!window.confirm('确认删除该版本?关联的需求会变成"无版本"。')) return
+    try { await api.versions.remove(id); setVersions(prev => prev.filter(v => v.id !== id)) }
+    catch { setError('删除失败') }
+  }
+  // 内联快速改阶段(免开编辑弹窗)
+  const changePhase = async (v: Version, phase: string) => {
     try {
-      await api.versions.remove(id)
-      setVersions(prev => prev.filter(v => v.id !== id))
-    } catch { setError('删除失败') }
+      const updated = await api.versions.update(v.id, { phase })
+      setVersions(prev => prev.map(x => x.id === v.id ? updated : x))
+    } catch { setError('改阶段失败') }
   }
 
   return (
@@ -107,47 +45,7 @@ export default function Versions() {
         <Button onClick={openCreate}>+ 新建版本</Button>
       </div>
 
-      <Dialog open={showForm} onOpenChange={(open) => { if (!open) closeForm() }}>
-        <DialogContent className="max-w-xl">
-          <DialogHeader><DialogTitle>{editingId ? '编辑版本' : '新建版本'}</DialogTitle></DialogHeader>
-          <form onSubmit={save} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="vname">版本名 *</Label>
-              <Input id="vname" required value={form.name}
-                onChange={e => setForm({ ...form, name: e.target.value })}
-                placeholder="如 v2.1 / 2026-08迭代" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="vphase">当前阶段(留空=按日期自动派生)</Label>
-              <Select value={form.phase} onValueChange={(v) => setForm({ ...form, phase: v === '__auto__' ? '' : v })}>
-                <SelectTrigger id="vphase"><SelectValue placeholder="自动(按日期)" /></SelectTrigger>
-                <SelectContent>
-                  {PHASE_OPTIONS.map(p => <SelectItem key={p || '__auto__'} value={p || '__auto__'}>{p || '自动(按日期)'}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              {DATE_FIELDS.map(([k, label]) => (
-                <div className="space-y-2" key={k}>
-                  <Label htmlFor={k}>{label}</Label>
-                  <Input id={k} type="date" value={form[k]}
-                    onChange={e => setForm({ ...form, [k]: e.target.value })} />
-                </div>
-              ))}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="vnote">备注</Label>
-              <Textarea id="vnote" value={form.note}
-                onChange={e => setForm({ ...form, note: e.target.value })} />
-            </div>
-            {error && <div className="text-destructive text-sm">{error}</div>}
-            <DialogFooter>
-              <Button type="submit">提交</Button>
-              <Button type="button" variant="outline" onClick={closeForm}>取消</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <VersionFormDialog open={showForm} version={editingVersion} onClose={() => setShowForm(false)} onSaved={onSaved} />
 
       <Card>
         <CardHeader><CardTitle>版本管理</CardTitle></CardHeader>
@@ -166,7 +64,12 @@ export default function Versions() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{v.name}</span>
-                      <Badge variant={phaseVariant(v.current_phase)}>{v.current_phase}</Badge>
+                      <Select value={v.phase || '__auto__'} onValueChange={(p) => changePhase(v, p === '__auto__' ? '' : p)}>
+                        <SelectTrigger className="h-6 w-24 text-xs"><SelectValue>{v.phase || '自动'}</SelectValue></SelectTrigger>
+                        <SelectContent>
+                          {PHASE_OPTIONS.map(p => <SelectItem key={p || '__auto__'} value={p || '__auto__'}>{p || '自动(按日期)'}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="flex gap-1">
                       <Button size="sm" variant="outline" onClick={() => startEdit(v)}>编辑</Button>
@@ -180,11 +83,14 @@ export default function Versions() {
                   </div>
                   <div className="text-xs">
                     进度 <b>{done}/{total}</b> · <b>{pct}%</b> · 剩余 <b>{remaining}h</b>
+                    <span className="ml-2 text-muted-foreground">(当前阶段:{v.current_phase})</span>
                   </div>
+                  {v.note && <div className="text-xs text-muted-foreground">{v.note}</div>}
                 </CardContent>
               </Card>
             )
           })}
+          {error && <div className="text-destructive text-sm">{error}</div>}
         </CardContent>
       </Card>
     </div>
