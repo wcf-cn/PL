@@ -210,7 +210,7 @@ class Version(models.Model):
 
 class VersionMergePoint(models.Model):
     version = models.ForeignKey(Version, on_delete=models.CASCADE, related_name='merge_points', verbose_name='版本')
-    date = models.DateField('合入日期')
+    date = models.DateField('合入日期', null=True, blank=True)
     note = models.TextField('备注', blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 

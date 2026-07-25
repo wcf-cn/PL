@@ -51,7 +51,7 @@ export interface Version {
 export interface VersionMergePoint {
   id:number;
   version:number;
-  date:string;
+  date:string|null;
   note:string;
   created_at:string;
 }

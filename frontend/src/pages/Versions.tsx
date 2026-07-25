@@ -39,9 +39,13 @@ export default function Versions() {
     catch { setError('改阶段失败') }
   }
   const addMergePoint = async (versionId: number, date: string, note: string) => {
-    if (!date) return
-    try { await api.versionMergePoints.create({ version: versionId, date, note }); loadMergePoints() }
+    if (!note.trim()) return
+    try { await api.versionMergePoints.create({ version: versionId, date: date || null, note }); loadMergePoints() }
     catch { setError('添加合入点失败') }
+  }
+  const deleteMergePoint = async (id: number) => {
+    try { await api.versionMergePoints.remove(id); setMergePoints(prev => prev.filter(m => m.id !== id)) }
+    catch { setError('删除合入点失败') }
   }
 
   return (
@@ -84,7 +88,12 @@ export default function Versions() {
                   {v.note && <div className="text-xs text-muted-foreground">{v.note}</div>}
                   <div className="space-y-1 pt-1 border-t">
                     <div className="text-xs font-medium pt-1">合入点 ({vmps.length})</div>
-                    {vmps.map(m => <div key={m.id} className="text-xs text-muted-foreground">{m.date} {m.note && `- ${m.note}`}</div>)}
+                    {vmps.map(m => (
+                      <div key={m.id} className="text-xs text-muted-foreground flex items-center gap-1">
+                        <span className="flex-1">{m.date && `${m.date} `}{m.note}</span>
+                        <button onClick={() => deleteMergePoint(m.id)} className="text-muted-foreground hover:text-destructive shrink-0">×</button>
+                      </div>
+                    ))}
                     {vmps.length === 0 && <div className="text-xs text-muted-foreground">暂无</div>}
                     <MergePointAdder onAdd={(date, note) => addMergePoint(v.id, date, note)} />
                   </div>
@@ -104,9 +113,9 @@ function MergePointAdder({ onAdd }: { onAdd: (date: string, note: string) => voi
   const [note, setNote] = useState('')
   return (
     <div className="flex gap-2">
-      <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-7 w-36 text-xs" />
-      <Input value={note} onChange={e => setNote(e.target.value)} placeholder="合入说明" className="h-7 flex-1 text-xs" />
-      <Button size="sm" variant="outline" type="button" onClick={() => { if (date) { onAdd(date, note); setDate(''); setNote('') } }}>+合入</Button>
+      <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-7 w-32 text-xs" />
+      <Input value={note} onChange={e => setNote(e.target.value)} placeholder="合入说明(必填)" className="h-7 flex-1 text-xs" />
+      <Button size="sm" variant="outline" type="button" onClick={() => { if (note.trim()) { onAdd(date, note); setDate(''); setNote('') } }}>+合入</Button>
     </div>
   )
 }
