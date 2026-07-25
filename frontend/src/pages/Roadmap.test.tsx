@@ -5,8 +5,9 @@ import Roadmap from './Roadmap'
 vi.mock('../api', () => ({
   api: {
     versions: { list: vi.fn().mockResolvedValue([
-      { id:1, name:'v1.0', integration_date:'2026-07-01', freeze_date:'2026-07-10', test_date:'2026-07-12', release_date:'2026-07-20', note:'', current_phase:'已发布', created_at:'', updated_at:'' },
+      { id:1, name:'v1.0', phase:'', dev_start_date:'2026-06-20', integration_date:'2026-07-01', freeze_date:'2026-07-10', test_date:'2026-07-12', release_date:'2026-07-20', note:'', current_phase:'已发布', created_at:'', updated_at:'' },
     ])},
+    requirements: { list: vi.fn().mockResolvedValue([]) },
   },
 }))
 
