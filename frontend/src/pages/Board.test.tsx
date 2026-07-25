@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Board from './Board'
@@ -23,6 +23,12 @@ vi.mock('../api', () => ({
     versions: { list: vi.fn().mockResolvedValue([]) },
   }
 }))
+
+beforeEach(() => {
+  for (const k of ['board:last-module', 'board:last-assignee', 'board:last-version']) {
+    try { localStorage.removeItem(k) } catch { /* jsdom localStorage may be partial */ }
+  }
+})
 
 describe('Board', () => {
   it('renders columns and cards', async () => {
@@ -128,5 +134,41 @@ describe('Board', () => {
     // 列头 "开发中" 的 Badge 应有红色 class(threshold=5, 6 条超限)
     const header = screen.getByText('开发中').closest('div')
     expect(header?.className).toMatch(/red|destructive|text-red/)
+  })
+
+  it('快速新建:输入标题回车即建', async () => {
+    const { api } = await import('../api')
+    ;(api.requirements.list as any).mockResolvedValue([
+      { id:1, title:'登录', status:'in_progress', priority:'P0', kind:'feature', assignee:1, assignee_name:'张三', module:'', est_effort:8, actual_effort:4, progress:50, planned_start:'2026-01-01', planned_end:'2026-01-15', parent:null, version:null, blocked_by:[], last_status_change_at:null, created_at:'', note:'' },
+    ])
+    render(<Board />)
+    await waitFor(() => expect(screen.getByText('登录')).toBeInTheDocument())
+    const input = screen.getByPlaceholderText('快速新建,回车提交')
+    fireEvent.change(input, { target: { value: '紧急需求' } })
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' })
+    await waitFor(() => expect(api.requirements.create).toHaveBeenCalled())
+    expect((api.requirements.create as any).mock.calls.at(-1)![0].title).toBe('紧急需求')
+  })
+
+  it('克隆需求', async () => {
+    const { api } = await import('../api')
+    ;(api.requirements.list as any).mockResolvedValue([
+      { id:1, title:'登录', status:'in_progress', priority:'P0', kind:'feature', assignee:1, assignee_name:'张三', module:'', est_effort:8, actual_effort:4, progress:50, planned_start:'2026-01-01', planned_end:'2026-01-15', parent:null, version:null, blocked_by:[], last_status_change_at:null, created_at:'', note:'' },
+    ])
+    const user = userEvent.setup()
+    render(<Board />)
+    await waitFor(() => expect(screen.getByText('登录')).toBeInTheDocument())
+    await user.dblClick(screen.getByText('登录'))
+    await waitFor(() => expect(screen.getByText('编辑需求')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: '克隆' }))
+    await waitFor(() => expect(api.requirements.create).toHaveBeenCalled())
+    expect((api.requirements.create as any).mock.calls.at(-1)![0].title).toBe('登录(副本)')
+  })
+
+  it('空状态显示引导', async () => {
+    const { api } = await import('../api')
+    ;(api.requirements.list as any).mockResolvedValue([])
+    render(<Board />)
+    await waitFor(() => expect(screen.getByText(/暂无需求/)).toBeInTheDocument())
   })
 })

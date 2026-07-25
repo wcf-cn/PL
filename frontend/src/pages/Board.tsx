@@ -11,6 +11,7 @@ import { Separator } from '../components/ui/separator'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from '../components/ui/dropdown-menu'
 import { cn } from '../lib/utils'
+import { useLocalStorage } from '../lib/useLocalStorage'
 
 const PRIO_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   P0: 'destructive',
@@ -44,6 +45,16 @@ export default function Board() {
   const [showDone, setShowDone] = useState(false)
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [quickTitle, setQuickTitle] = useState('')
+  // 智能默认:记忆最近用的模块/负责人/版本(新建时预填)
+  const [lastModule, setLastModule] = useLocalStorage<string>('board:last-module', '')
+  const [lastAssignee, setLastAssignee] = useLocalStorage<number | null>('board:last-assignee', null)
+  const [lastVersion, setLastVersion] = useLocalStorage<number | null>('board:last-version', null)
+  const smartDefaults = () => ({
+    module: moduleFilter || lastModule,
+    assignee: assigneeFilter ?? lastAssignee,
+    version: versionFilter ?? lastVersion,
+  })
   const load = () => api.requirements.list().then(setItems)
   useEffect(() => {
     load()
@@ -142,10 +153,43 @@ export default function Board() {
 
   const openCreate = () => {
     setEditingId(null)
-    setForm({ title: '', status: 'backlog', priority: 'P1', kind: 'feature', assignee: null, module: '', est_effort: '', actual_effort: '', progress: 0, planned_start: '', planned_end: '', version: null, blockedBy: [] })
+    const sd = smartDefaults()
+    setForm({ title: '', status: 'backlog', priority: 'P1', kind: 'feature', assignee: sd.assignee, module: sd.module, est_effort: '', actual_effort: '', progress: 0, planned_start: '', planned_end: '', version: sd.version, blockedBy: [] })
     setMilestones([])
     setError('')
     setShowForm(true)
+  }
+
+  const quickAdd = async (e: React.KeyboardEvent) => {
+    if (e.key !== 'Enter' || !quickTitle.trim()) return
+    e.preventDefault()
+    const sd = smartDefaults()
+    try {
+      const created = await api.requirements.create({
+        title: quickTitle.trim(), status: 'backlog', priority: 'P1', kind: 'feature',
+        assignee: sd.assignee, module: sd.module, est_effort: 0, actual_effort: 0, progress: 0,
+        planned_start: null, planned_end: null, version: sd.version, blocked_by: [],
+      })
+      setItems(prev => [created, ...prev])
+      if (sd.module) setLastModule(sd.module)
+      setLastAssignee(sd.assignee); setLastVersion(sd.version)
+      setQuickTitle('')
+    } catch { setError('快速新建失败') }
+  }
+
+  const cloneReq = async () => {
+    const item = items.find(r => r.id === editingId)
+    if (!item) return
+    try {
+      const created = await api.requirements.create({
+        title: item.title + '(副本)', status: item.status, priority: item.priority, kind: item.kind,
+        assignee: item.assignee, module: item.module, est_effort: item.est_effort, actual_effort: 0,
+        progress: item.progress, planned_start: item.planned_start, planned_end: item.planned_end,
+        version: item.version, blocked_by: [],
+      })
+      setItems(prev => [created, ...prev])
+      closeForm()
+    } catch { setError('克隆失败') }
   }
 
   const [form, setForm] = useState({
@@ -203,6 +247,8 @@ export default function Board() {
       } else {
         const created = await api.requirements.create(payload)
         setItems(prev => [created, ...prev])
+        if (form.module) setLastModule(form.module)
+        setLastAssignee(form.assignee); setLastVersion(form.version)
       }
       closeForm()
     } catch (err: any) {
@@ -295,6 +341,13 @@ export default function Board() {
           value={searchText}
           onChange={e => setSearchText(e.target.value)}
           className="w-40"
+        />
+        <Input
+          placeholder="快速新建,回车提交"
+          value={quickTitle}
+          onChange={e => setQuickTitle(e.target.value)}
+          onKeyDown={quickAdd}
+          className="w-48"
         />
       </div>
 
@@ -549,7 +602,10 @@ export default function Board() {
               {error && <div className="text-destructive text-sm">{error}</div>}
               <DialogFooter className="sm:justify-between gap-2">
                 {editingId
-                  ? <Button type="button" variant="destructive" onClick={deleteReq}>删除</Button>
+                  ? <div className="flex gap-2">
+                      <Button type="button" variant="destructive" onClick={deleteReq}>删除</Button>
+                      <Button type="button" variant="outline" onClick={cloneReq}>克隆</Button>
+                    </div>
                   : <div />}
                 <div className="flex gap-2">
                   <Button type="submit">提交</Button>
@@ -560,6 +616,11 @@ export default function Board() {
         </DialogContent>
       </Dialog>
 
+      {items.length === 0 && (
+        <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">
+          暂无需求 — 在上方「快速新建」输入标题回车,或点「+ 新建需求」。
+        </CardContent></Card>
+      )}
       <div className="flex gap-3 overflow-x-auto pb-4">
         {STATUS_ORDER.filter(st => showDone || st !== 'done').map(st => (
           <Column key={st} status={st} items={items.filter(r => r.status === st && !r.parent && (versionFilter === null || r.version === versionFilter) && (assigneeFilter === null || r.assignee === assigneeFilter) && (moduleFilter === '' || r.module === moduleFilter) && (priorityFilter === '' || r.priority === priorityFilter) && (kindFilter === '' || r.kind === kindFilter) && (searchText === '' || r.title.toLowerCase().includes(searchText.toLowerCase())))} allItems={items} onDrop={onDrop} onEdit={startEdit} selectMode={selectMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} />
