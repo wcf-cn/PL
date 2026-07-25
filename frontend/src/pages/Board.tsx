@@ -543,7 +543,7 @@ export default function Board() {
                       <div className="grid grid-cols-2 gap-2">
                         <Select value={newVer.phase || '__auto__'} onValueChange={(p) => setNewVer({ ...newVer, phase: p === '__auto__' ? '' : p })}>
                           <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="阶段" /></SelectTrigger>
-                          <SelectContent>{['', '规划中', '联调中', '封板', '转测中', '已发布'].map(p => <SelectItem key={p || 'a'} value={p || '__auto__'}>{p || '自动'}</SelectItem>)}</SelectContent>
+                          <SelectContent>{['', '规划中', '开发中', '联调中', '封板', '转测中', '已发布'].map(p => <SelectItem key={p || 'a'} value={p || '__auto__'}>{p || '自动'}</SelectItem>)}</SelectContent>
                         </Select>
                         <Input type="date" value={newVer.dev_start_date} onChange={e => setNewVer({ ...newVer, dev_start_date: e.target.value })} className="h-8 text-xs" />
                       </div>

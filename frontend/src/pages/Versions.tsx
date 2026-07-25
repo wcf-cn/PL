@@ -10,7 +10,7 @@ import { VersionFormDialog } from '../components/VersionFormDialog'
 const PHASE_DATES: Array<[keyof Version, string]> = [
   ['dev_start_date', '投入'], ['integration_date', '联调'], ['freeze_date', '封板'], ['test_date', '转测'], ['release_date', '发布'],
 ]
-const PHASE_OPTIONS = ['', '规划中', '联调中', '封板', '转测中', '已发布']
+const PHASE_OPTIONS = ['', '规划中', '开发中', '联调中', '封板', '转测中', '已发布']
 
 export default function Versions() {
   const [versions, setVersions] = useState<Version[]>([])

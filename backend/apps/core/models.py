@@ -203,6 +203,8 @@ class Version(models.Model):
             return '封板'
         if self.integration_date and today >= self.integration_date:
             return '联调中'
+        if self.dev_start_date and today >= self.dev_start_date:
+            return '开发中'
         return '规划中'
 
 

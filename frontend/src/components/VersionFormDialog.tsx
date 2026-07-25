@@ -8,7 +8,7 @@ import { Textarea } from './ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog'
 
-const PHASE_OPTIONS = ['', '规划中', '联调中', '封板', '转测中', '已发布']
+const PHASE_OPTIONS = ['', '规划中', '开发中', '联调中', '封板', '转测中', '已发布']
 const DATE_FIELDS: Array<[ 'dev_start_date' | 'integration_date' | 'freeze_date' | 'test_date' | 'release_date', string]> = [
   ['dev_start_date', '投入开始日'], ['integration_date', '联调日'], ['freeze_date', '封板日'], ['test_date', '转测日'], ['release_date', '发布日'],
 ]
