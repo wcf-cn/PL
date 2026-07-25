@@ -320,7 +320,7 @@ export default function Gantt() {
                 return (
                   <div key={`${v.id}-${key}`} className="absolute top-0 bottom-0 pointer-events-none"
                        style={{ left: `${x}px`, borderLeft: `2px dashed ${color}` }}>
-                    <span className="absolute top-7 left-0 px-1 text-[9px] truncate max-w-[100px] bg-background/80 rounded" title={`${v.name} · ${label} ${d}`} style={{ color }}>{v.name}·{label}</span>
+                    <span className="absolute top-7 left-0 px-1 text-[9px] truncate max-w-[120px] bg-background/80 rounded pointer-events-auto cursor-help" title={`${v.name} · ${label} ${d}`} style={{ color }}>{v.name}·{label}</span>
                   </div>
                 )
               })
