@@ -37,6 +37,7 @@ export interface Version {
   id:number;
   name:string;
   phase:string;
+  dev_start_date:string|null;
   integration_date:string|null;
   freeze_date:string|null;
   test_date:string|null;
@@ -45,6 +46,14 @@ export interface Version {
   current_phase:string;
   created_at:string;
   updated_at:string;
+}
+
+export interface VersionMergePoint {
+  id:number;
+  version:number;
+  date:string;
+  note:string;
+  created_at:string;
 }
 
 export interface Milestone {

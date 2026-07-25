@@ -9,11 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog'
 
 const PHASE_OPTIONS = ['', '规划中', '联调中', '封板', '转测中', '已发布']
-const DATE_FIELDS: Array<[ 'integration_date' | 'freeze_date' | 'test_date' | 'release_date', string]> = [
-  ['integration_date', '联调日'], ['freeze_date', '封板日'], ['test_date', '转测日'], ['release_date', '发布日'],
+const DATE_FIELDS: Array<[ 'dev_start_date' | 'integration_date' | 'freeze_date' | 'test_date' | 'release_date', string]> = [
+  ['dev_start_date', '投入开始日'], ['integration_date', '联调日'], ['freeze_date', '封板日'], ['test_date', '转测日'], ['release_date', '发布日'],
 ]
 
-const EMPTY = { name: '', phase: '', integration_date: '', freeze_date: '', test_date: '', release_date: '', note: '' }
+const EMPTY = { name: '', phase: '', dev_start_date: '', integration_date: '', freeze_date: '', test_date: '', release_date: '', note: '' }
 
 /** 版本新建/编辑共享弹窗。version=null 为新建。 */
 export function VersionFormDialog({ open, version, onClose, onSaved }: {
@@ -29,7 +29,7 @@ export function VersionFormDialog({ open, version, onClose, onSaved }: {
     if (!open) return
     setError('')
     setForm(version ? {
-      name: version.name, phase: version.phase || '',
+      name: version.name, phase: version.phase || '', dev_start_date: version.dev_start_date || '',
       integration_date: version.integration_date || '', freeze_date: version.freeze_date || '',
       test_date: version.test_date || '', release_date: version.release_date || '', note: version.note || '',
     } : { ...EMPTY })
@@ -39,7 +39,7 @@ export function VersionFormDialog({ open, version, onClose, onSaved }: {
     e.preventDefault()
     if (!form.name.trim()) return
     const payload = {
-      name: form.name.trim(), phase: form.phase,
+      name: form.name.trim(), phase: form.phase, dev_start_date: form.dev_start_date || null,
       integration_date: form.integration_date || null, freeze_date: form.freeze_date || null,
       test_date: form.test_date || null, release_date: form.release_date || null, note: form.note,
     }

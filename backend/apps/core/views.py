@@ -7,8 +7,8 @@ from django.utils import timezone
 from django.db.models import Count
 from django.http import HttpResponse
 import csv
-from .models import Member, Requirement, Milestone, MemberDailySnapshot, Version, TimeEntry
-from .serializers import MemberSerializer, RequirementSerializer, MilestoneSerializer, VersionSerializer, TimeEntrySerializer
+from .models import Member, Requirement, Milestone, MemberDailySnapshot, Version, TimeEntry, VersionMergePoint
+from .serializers import MemberSerializer, RequirementSerializer, MilestoneSerializer, VersionSerializer, TimeEntrySerializer, VersionMergePointSerializer
 from .ai import chat_with_glm, parse_drafts, strip_json_block, build_system_prompt, parse_actions, strip_actions_block
 from .ai_actions import execute_action
 from .metrics import flow_metrics
@@ -41,6 +41,16 @@ class MilestoneViewSet(viewsets.ModelViewSet):
 class VersionViewSet(viewsets.ModelViewSet):
     queryset = Version.objects.all()
     serializer_class = VersionSerializer
+
+class VersionMergePointViewSet(viewsets.ModelViewSet):
+    queryset = VersionMergePoint.objects.all()
+    serializer_class = VersionMergePointSerializer
+    def get_queryset(self):
+        qs = VersionMergePoint.objects.all()
+        vid = self.request.query_params.get('version')
+        if vid:
+            qs = qs.filter(version_id=vid)
+        return qs
 
 class TimeEntryViewSet(viewsets.ModelViewSet):
     queryset = TimeEntry.objects.all()

@@ -11,6 +11,7 @@ vi.mock('../api', () => ({
       { id:1, title:'A', status:'done', version:1, est_effort:8, actual_effort:8, parent:null },
       { id:2, title:'B', status:'in_progress', version:1, est_effort:4, actual_effort:1, parent:null },
     ])},
+    versionMergePoints: { list: vi.fn().mockResolvedValue([]) },
   },
 }))
 

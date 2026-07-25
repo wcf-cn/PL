@@ -12,7 +12,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from '../components/ui/dropdown-menu'
 import { cn } from '../lib/utils'
 import { useLocalStorage } from '../lib/useLocalStorage'
-import { VersionFormDialog } from '../components/VersionFormDialog'
 
 const PRIO_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   P0: 'destructive',
@@ -48,6 +47,7 @@ export default function Board() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [quickTitle, setQuickTitle] = useState('')
   const [showVersionForm, setShowVersionForm] = useState(false)
+  const [newVer, setNewVer] = useState({ name: '', phase: '', dev_start_date: '', integration_date: '', freeze_date: '', test_date: '', release_date: '' })
   // 智能默认:记忆最近用的模块/负责人/版本(新建时预填)
   const [lastModule, setLastModule] = useLocalStorage<string>('board:last-module', '')
   const [lastAssignee, setLastAssignee] = useLocalStorage<number | null>('board:last-assignee', null)
@@ -228,6 +228,21 @@ export default function Board() {
       setLastAssignee(sd.assignee); setLastVersion(sd.version)
       setQuickTitle('')
     } catch { setError('快速新建失败') }
+  }
+
+  const createInlineVersion = async () => {
+    if (!newVer.name.trim()) return
+    try {
+      const created = await api.versions.create({
+        name: newVer.name.trim(), phase: newVer.phase, dev_start_date: newVer.dev_start_date || null,
+        integration_date: newVer.integration_date || null, freeze_date: newVer.freeze_date || null,
+        test_date: newVer.test_date || null, release_date: newVer.release_date || null, note: '',
+      })
+      setVersions(prev => prev.some(x => x.id === created.id) ? prev : [...prev, created])
+      setForm(f => ({ ...f, version: created.id }))
+      setShowVersionForm(false)
+      setNewVer({ name: '', phase: '', dev_start_date: '', integration_date: '', freeze_date: '', test_date: '', release_date: '' })
+    } catch { setError('创建版本失败') }
   }
 
   const cloneReq = async () => {
@@ -428,9 +443,6 @@ export default function Board() {
         </div>
       )}
 
-      <VersionFormDialog open={showVersionForm} version={null} onClose={() => setShowVersionForm(false)}
-        onSaved={(v) => { setVersions(prev => prev.some(x => x.id === v.id) ? prev : [...prev, v]); setForm(f => ({ ...f, version: v.id })) }} />
-
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) closeForm() }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -525,6 +537,27 @@ export default function Board() {
                       <SelectItem value="__new__">+ 新建版本…</SelectItem>
                     </SelectContent>
                   </Select>
+                  {showVersionForm && (
+                    <div className="space-y-2 p-2 rounded border bg-muted/30">
+                      <Input placeholder="版本名 *" value={newVer.name} onChange={e => setNewVer({ ...newVer, name: e.target.value })} className="h-8 text-xs" />
+                      <div className="grid grid-cols-2 gap-2">
+                        <Select value={newVer.phase || '__auto__'} onValueChange={(p) => setNewVer({ ...newVer, phase: p === '__auto__' ? '' : p })}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="阶段" /></SelectTrigger>
+                          <SelectContent>{['', '规划中', '联调中', '封板', '转测中', '已发布'].map(p => <SelectItem key={p || 'a'} value={p || '__auto__'}>{p || '自动'}</SelectItem>)}</SelectContent>
+                        </Select>
+                        <Input type="date" value={newVer.dev_start_date} onChange={e => setNewVer({ ...newVer, dev_start_date: e.target.value })} className="h-8 text-xs" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(['integration_date', 'freeze_date', 'test_date', 'release_date'] as const).map(k => (
+                          <Input key={k} type="date" value={newVer[k]} onChange={e => setNewVer({ ...newVer, [k]: e.target.value })} className="h-8 text-xs" />
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" type="button" onClick={createInlineVersion}>创建并选择</Button>
+                        <Button size="sm" type="button" variant="outline" onClick={() => setShowVersionForm(false)}>取消</Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="est_effort">预计工时h</Label>

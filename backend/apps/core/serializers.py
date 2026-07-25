@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Member, Requirement, Milestone, Version, TimeEntry
+from .models import Member, Requirement, Milestone, Version, TimeEntry, VersionMergePoint
 
 class MemberSerializer(serializers.ModelSerializer):
     class Meta:
@@ -27,4 +27,9 @@ class MilestoneSerializer(serializers.ModelSerializer):
 class TimeEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = TimeEntry
+        fields = '__all__'
+
+class VersionMergePointSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VersionMergePoint
         fields = '__all__'

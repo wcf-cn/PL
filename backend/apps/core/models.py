@@ -173,6 +173,7 @@ class TimeEntry(models.Model):
 class Version(models.Model):
     name = models.CharField('版本', max_length=64)
     phase = models.CharField('阶段(留空=按日期派生)', max_length=10, blank=True, default='')
+    dev_start_date = models.DateField('投入开始日', null=True, blank=True)
     integration_date = models.DateField('联调日', null=True, blank=True)
     freeze_date = models.DateField('封板日', null=True, blank=True)
     test_date = models.DateField('转测日', null=True, blank=True)
@@ -203,3 +204,18 @@ class Version(models.Model):
         if self.integration_date and today >= self.integration_date:
             return '联调中'
         return '规划中'
+
+
+class VersionMergePoint(models.Model):
+    version = models.ForeignKey(Version, on_delete=models.CASCADE, related_name='merge_points', verbose_name='版本')
+    date = models.DateField('合入日期')
+    note = models.TextField('备注', blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = '版本合入点'
+        verbose_name_plural = '版本合入点'
+        ordering = ['-date']
+
+    def __str__(self):
+        return f'{self.version.name} 合入 {self.date}'

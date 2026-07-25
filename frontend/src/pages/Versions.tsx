@@ -1,25 +1,28 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
-import type { Version, Requirement } from '../types'
+import type { Version, Requirement, VersionMergePoint } from '../types'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import { VersionFormDialog } from '../components/VersionFormDialog'
 
 const PHASE_DATES: Array<[keyof Version, string]> = [
-  ['integration_date', '联调'], ['freeze_date', '封板'], ['test_date', '转测'], ['release_date', '发布'],
+  ['dev_start_date', '投入'], ['integration_date', '联调'], ['freeze_date', '封板'], ['test_date', '转测'], ['release_date', '发布'],
 ]
 const PHASE_OPTIONS = ['', '规划中', '联调中', '封板', '转测中', '已发布']
 
 export default function Versions() {
   const [versions, setVersions] = useState<Version[]>([])
   const [reqs, setReqs] = useState<Requirement[]>([])
+  const [mergePoints, setMergePoints] = useState<VersionMergePoint[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editingVersion, setEditingVersion] = useState<Version | null>(null)
   const [error, setError] = useState('')
 
-  const load = () => api.versions.list().then(setVersions)
-  useEffect(() => { load(); api.requirements.list().then(setReqs) }, [])
+  const loadVersions = () => api.versions.list().then(setVersions)
+  const loadMergePoints = () => api.versionMergePoints.list().then(setMergePoints)
+  useEffect(() => { loadVersions(); api.requirements.list().then(setReqs); loadMergePoints() }, [])
 
   const openCreate = () => { setEditingVersion(null); setShowForm(true) }
   const startEdit = (v: Version) => { setEditingVersion(v); setShowForm(true) }
@@ -31,22 +34,20 @@ export default function Versions() {
     try { await api.versions.remove(id); setVersions(prev => prev.filter(v => v.id !== id)) }
     catch { setError('删除失败') }
   }
-  // 内联快速改阶段(免开编辑弹窗)
   const changePhase = async (v: Version, phase: string) => {
-    try {
-      const updated = await api.versions.update(v.id, { phase })
-      setVersions(prev => prev.map(x => x.id === v.id ? updated : x))
-    } catch { setError('改阶段失败') }
+    try { const updated = await api.versions.update(v.id, { phase }); setVersions(prev => prev.map(x => x.id === v.id ? updated : x)) }
+    catch { setError('改阶段失败') }
+  }
+  const addMergePoint = async (versionId: number, date: string, note: string) => {
+    if (!date) return
+    try { await api.versionMergePoints.create({ version: versionId, date, note }); loadMergePoints() }
+    catch { setError('添加合入点失败') }
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Button onClick={openCreate}>+ 新建版本</Button>
-      </div>
-
+      <div className="flex items-center gap-2"><Button onClick={openCreate}>+ 新建版本</Button></div>
       <VersionFormDialog open={showForm} version={editingVersion} onClose={() => setShowForm(false)} onSaved={onSaved} />
-
       <Card>
         <CardHeader><CardTitle>版本管理</CardTitle></CardHeader>
         <CardContent className="space-y-3">
@@ -56,8 +57,8 @@ export default function Versions() {
             const total = leaves.length
             const done = leaves.filter(r => r.status === 'done').length
             const pct = total > 0 ? Math.round(done / total * 100) : 0
-            const remaining = leaves.filter(r => !['done', 'paused'].includes(r.status))
-              .reduce((s, r) => s + Math.max(0, r.est_effort - r.actual_effort), 0)
+            const remaining = leaves.filter(r => !['done', 'paused'].includes(r.status)).reduce((s, r) => s + Math.max(0, r.est_effort - r.actual_effort), 0)
+            const vmps = mergePoints.filter(m => m.version === v.id)
             return (
               <Card key={v.id}>
                 <CardContent className="p-3 space-y-2">
@@ -66,9 +67,7 @@ export default function Versions() {
                       <span className="font-medium">{v.name}</span>
                       <Select value={v.phase || '__auto__'} onValueChange={(p) => changePhase(v, p === '__auto__' ? '' : p)}>
                         <SelectTrigger className="h-6 w-24 text-xs"><SelectValue>{v.phase || '自动'}</SelectValue></SelectTrigger>
-                        <SelectContent>
-                          {PHASE_OPTIONS.map(p => <SelectItem key={p || '__auto__'} value={p || '__auto__'}>{p || '自动(按日期)'}</SelectItem>)}
-                        </SelectContent>
+                        <SelectContent>{PHASE_OPTIONS.map(p => <SelectItem key={p || '__auto__'} value={p || '__auto__'}>{p || '自动(按日期)'}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                     <div className="flex gap-1">
@@ -81,11 +80,14 @@ export default function Versions() {
                       <span key={k}>{label}: <b className="text-foreground">{(v[k] as string) || '—'}</b></span>
                     ))}
                   </div>
-                  <div className="text-xs">
-                    进度 <b>{done}/{total}</b> · <b>{pct}%</b> · 剩余 <b>{remaining}h</b>
-                    <span className="ml-2 text-muted-foreground">(当前阶段:{v.current_phase})</span>
-                  </div>
+                  <div className="text-xs">进度 <b>{done}/{total}</b> · <b>{pct}%</b> · 剩余 <b>{remaining}h</b><span className="ml-2 text-muted-foreground">(当前:{v.current_phase})</span></div>
                   {v.note && <div className="text-xs text-muted-foreground">{v.note}</div>}
+                  <div className="space-y-1 pt-1 border-t">
+                    <div className="text-xs font-medium pt-1">合入点 ({vmps.length})</div>
+                    {vmps.map(m => <div key={m.id} className="text-xs text-muted-foreground">{m.date} {m.note && `- ${m.note}`}</div>)}
+                    {vmps.length === 0 && <div className="text-xs text-muted-foreground">暂无</div>}
+                    <MergePointAdder onAdd={(date, note) => addMergePoint(v.id, date, note)} />
+                  </div>
                 </CardContent>
               </Card>
             )
@@ -93,6 +95,18 @@ export default function Versions() {
           {error && <div className="text-destructive text-sm">{error}</div>}
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+function MergePointAdder({ onAdd }: { onAdd: (date: string, note: string) => void }) {
+  const [date, setDate] = useState('')
+  const [note, setNote] = useState('')
+  return (
+    <div className="flex gap-2">
+      <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-7 w-36 text-xs" />
+      <Input value={note} onChange={e => setNote(e.target.value)} placeholder="合入说明" className="h-7 flex-1 text-xs" />
+      <Button size="sm" variant="outline" type="button" onClick={() => { if (date) { onAdd(date, note); setDate(''); setNote('') } }}>+合入</Button>
     </div>
   )
 }
