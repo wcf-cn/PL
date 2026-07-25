@@ -14,6 +14,12 @@ const PHASE_KEYS: Array<[keyof Version, string, string]> = [
 
 function parse(d: string | null) { return d ? new Date(d).getTime() : null }
 
+const PHASE_COLORS: Record<string, string> = {
+  '规划中': '#94a3b8', '开发中': '#eab308', '联调中': '#3b82f6',
+  '封板': '#f59e0b', '转测中': '#a855f7', '已发布': '#22c55e',
+}
+const phaseColor = (p: string) => PHASE_COLORS[p] || '#94a3b8'
+
 export default function Roadmap() {
   const [versions, setVersions] = useState<Version[]>([])
   const [reqs, setReqs] = useState<Requirement[]>([])
@@ -57,8 +63,8 @@ export default function Roadmap() {
                 {/* 今天竖线 */}
                 <div className="absolute top-0 bottom-0 border-l-2 border-red-500/60" style={{ left: `${pctOf(todayT)}%` }} title="今天" />
                 {/* 版本区间条 */}
-                <div className="absolute top-1 bottom-1 rounded bg-primary/20 border border-primary/40 flex items-center justify-center"
-                     style={{ left: `${left}%`, width: `${width}%` }}>
+                <div className="absolute top-1 bottom-1 rounded flex items-center justify-center"
+                     style={{ left: `${left}%`, width: `${width}%`, backgroundColor: `${phaseColor(v.current_phase)}30`, border: `1px solid ${phaseColor(v.current_phase)}` }}>
                   <span className="text-[10px] text-muted-foreground truncate px-1">{v.current_phase}</span>
                 </div>
                 {/* 阶段标记点 */}
