@@ -45,7 +45,6 @@ export default function Board() {
   const [showDone, setShowDone] = useLocalStorage<boolean>('board:f-showdone', false)
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
-  const [quickTitle, setQuickTitle] = useState('')
   const [showVersionForm, setShowVersionForm] = useState(false)
   const [newVer, setNewVer] = useState({ name: '', phase: '', dev_start_date: '', integration_date: '', freeze_date: '', test_date: '', release_date: '' })
   // 智能默认:记忆最近用的模块/负责人/版本(新建时预填)
@@ -70,7 +69,6 @@ export default function Board() {
   }
 
   // 键盘快捷键 + 焦点卡
-  const quickRef = useRef<HTMLInputElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const [focusedId, setFocusedId] = useState<number | null>(null)
   const visibleItems = useMemo(() => items.filter(r => !r.parent
@@ -79,7 +77,7 @@ export default function Board() {
     && (moduleFilter === '' || r.module === moduleFilter)
     && (priorityFilter === '' || r.priority === priorityFilter)
     && (kindFilter === '' || r.kind === kindFilter)
-    && (searchText === '' || r.title.toLowerCase().includes(searchText.toLowerCase()))),
+    && (searchText === '' || [r.title, r.module, r.assignee_name || '', r.note || ''].join(' ').toLowerCase().includes(searchText.toLowerCase()))),
     [items, versionFilter, assigneeFilter, moduleFilter, priorityFilter, kindFilter, searchText])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -87,7 +85,7 @@ export default function Board() {
       const t = e.target as HTMLElement
       if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA') return
       const ids = visibleItems.map(r => r.id)
-      if (e.key === 'n' || e.key === 'N') { e.preventDefault(); quickRef.current?.focus() }
+      if (e.key === 'n' || e.key === 'N') { e.preventDefault(); openCreate() }
       else if (e.key === '/') { e.preventDefault(); searchRef.current?.focus() }
       else if (e.key === 'Escape') { exitSelect(); setFocusedId(null) }
       else if (e.key === 'j' || e.key === 'J') {
@@ -211,23 +209,6 @@ export default function Board() {
     setMilestones([])
     setError('')
     setShowForm(true)
-  }
-
-  const quickAdd = async (e: React.KeyboardEvent) => {
-    if (e.key !== 'Enter' || !quickTitle.trim()) return
-    e.preventDefault()
-    const sd = smartDefaults()
-    try {
-      const created = await api.requirements.create({
-        title: quickTitle.trim(), status: 'backlog', priority: 'P1', kind: 'feature',
-        assignee: sd.assignee, module: sd.module, est_effort: 0, actual_effort: 0, progress: 0,
-        planned_start: null, planned_end: null, version: sd.version, blocked_by: [],
-      })
-      setItems(prev => [created, ...prev])
-      if (sd.module) setLastModule(sd.module)
-      setLastAssignee(sd.assignee); setLastVersion(sd.version)
-      setQuickTitle('')
-    } catch { setError('快速新建失败') }
   }
 
   const createInlineVersion = async () => {
@@ -404,21 +385,18 @@ export default function Board() {
             <SelectItem value="bug">缺陷</SelectItem>
           </SelectContent>
         </Select>
-        <Input
-          ref={searchRef}
-          placeholder="搜索标题"
-          value={searchText}
-          onChange={e => setSearchText(e.target.value)}
-          className="w-40"
-        />
-        <Input
-          ref={quickRef}
-          placeholder="快速新建,回车提交"
-          value={quickTitle}
-          onChange={e => setQuickTitle(e.target.value)}
-          onKeyDown={quickAdd}
-          className="w-48"
-        />
+        <div className="relative">
+          <Input
+            ref={searchRef}
+            placeholder="搜索 标题/模块/负责人/备注"
+            value={searchText}
+            onChange={e => setSearchText(e.target.value)}
+            className="w-52 pr-7"
+          />
+          {searchText && (
+            <button onClick={() => setSearchText('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-sm">×</button>
+          )}
+        </div>
       </div>
 
       {selectMode && selectedIds.size > 0 && (
@@ -735,7 +713,7 @@ export default function Board() {
 
       {items.length === 0 && (
         <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">
-          暂无需求 — 在上方「快速新建」输入标题回车,或点「+ 新建需求」。
+          暂无需求 — 点「+ 新建需求」创建。
         </CardContent></Card>
       )}
       <div className="flex gap-3 overflow-x-auto pb-4">

@@ -97,7 +97,7 @@ describe('Board', () => {
     const user = userEvent.setup()
     render(<Board />)
     await waitFor(() => expect(screen.getByText('登录接口')).toBeInTheDocument())
-    await user.type(screen.getByPlaceholderText('搜索标题'), '支付')
+    await user.type(screen.getByPlaceholderText('搜索 标题/模块/负责人/备注'), '支付')
     await waitFor(() => expect(screen.queryByText('登录接口')).not.toBeInTheDocument())
     expect(screen.getByText('支付接口')).toBeInTheDocument()
   })
@@ -134,20 +134,6 @@ describe('Board', () => {
     // 列头 "开发中" 的 Badge 应有红色 class(threshold=5, 6 条超限)
     const header = screen.getByText('开发中').closest('div')
     expect(header?.className).toMatch(/red|destructive|text-red/)
-  })
-
-  it('快速新建:输入标题回车即建', async () => {
-    const { api } = await import('../api')
-    ;(api.requirements.list as any).mockResolvedValue([
-      { id:1, title:'登录', status:'in_progress', priority:'P0', kind:'feature', assignee:1, assignee_name:'张三', module:'', est_effort:8, actual_effort:4, progress:50, planned_start:'2026-01-01', planned_end:'2026-01-15', parent:null, version:null, blocked_by:[], last_status_change_at:null, created_at:'', note:'' },
-    ])
-    render(<Board />)
-    await waitFor(() => expect(screen.getByText('登录')).toBeInTheDocument())
-    const input = screen.getByPlaceholderText('快速新建,回车提交')
-    fireEvent.change(input, { target: { value: '紧急需求' } })
-    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' })
-    await waitFor(() => expect(api.requirements.create).toHaveBeenCalled())
-    expect((api.requirements.create as any).mock.calls.at(-1)![0].title).toBe('紧急需求')
   })
 
   it('克隆需求', async () => {
