@@ -36,6 +36,7 @@ export interface Requirement {
 export interface Version {
   id:number;
   name:string;
+  phase:string;
   integration_date:string|null;
   freeze_date:string|null;
   test_date:string|null;

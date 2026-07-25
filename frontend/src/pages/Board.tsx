@@ -507,13 +507,27 @@ export default function Board() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="version">目标版本</Label>
-                  <Select value={form.version?.toString() || ''} onValueChange={(v) => setForm({...form, version: v ? Number(v) : null})}>
+                  <Select value={form.version?.toString() || ''} onValueChange={async (v) => {
+                    if (v === '__new__') {
+                      const name = window.prompt('新版本名称')
+                      if (name && name.trim()) {
+                        try {
+                          const created = await api.versions.create({ name: name.trim() })
+                          setVersions(prev => [...prev, created])
+                          setForm(f => ({ ...f, version: created.id }))
+                        } catch { setError('创建版本失败') }
+                      }
+                      return
+                    }
+                    setForm({...form, version: v ? Number(v) : null})
+                  }}>
                     <SelectTrigger id="version">
                       <SelectValue placeholder="无版本" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">无版本</SelectItem>
                       {versions.map(v => <SelectItem key={v.id} value={v.id.toString()}>{v.name}</SelectItem>)}
+                      <SelectItem value="__new__">+ 新建版本…</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

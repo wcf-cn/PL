@@ -7,6 +7,7 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Textarea } from '../components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog'
 
 const PHASE_DATES: Array<[keyof Version, string]> = [
@@ -29,8 +30,9 @@ function phaseVariant(p: string) {
   return 'default' as const
 }
 
-const emptyForm = { name: '', integration_date: '', freeze_date: '', test_date: '', release_date: '', note: '' }
+const emptyForm = { name: '', phase: '', integration_date: '', freeze_date: '', test_date: '', release_date: '', note: '' }
 type FormState = typeof emptyForm
+const PHASE_OPTIONS = ['', '规划中', '联调中', '封板', '转测中', '已发布']
 
 export default function Versions() {
   const [versions, setVersions] = useState<Version[]>([])
@@ -52,6 +54,7 @@ export default function Versions() {
     setEditingId(v.id)
     setForm({
       name: v.name,
+      phase: v.phase || '',
       integration_date: v.integration_date || '',
       freeze_date: v.freeze_date || '',
       test_date: v.test_date || '',
@@ -66,6 +69,7 @@ export default function Versions() {
     if (!form.name.trim()) return
     const payload = {
       name: form.name.trim(),
+      phase: form.phase,
       integration_date: form.integration_date || null,
       freeze_date: form.freeze_date || null,
       test_date: form.test_date || null,
@@ -112,6 +116,15 @@ export default function Versions() {
               <Input id="vname" required value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
                 placeholder="如 v2.1 / 2026-08迭代" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="vphase">当前阶段(留空=按日期自动派生)</Label>
+              <Select value={form.phase} onValueChange={(v) => setForm({ ...form, phase: v === '__auto__' ? '' : v })}>
+                <SelectTrigger id="vphase"><SelectValue placeholder="自动(按日期)" /></SelectTrigger>
+                <SelectContent>
+                  {PHASE_OPTIONS.map(p => <SelectItem key={p || '__auto__'} value={p || '__auto__'}>{p || '自动(按日期)'}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               {DATE_FIELDS.map(([k, label]) => (

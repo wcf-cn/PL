@@ -25,12 +25,13 @@ export default function Schedule() {
           {activeMembers.map(m => {
             const memberReqs = inFlight.filter(r => r.assignee === m.id)
             const totalEffort = memberReqs.reduce((s, r) => s + r.est_effort, 0)
+            const remaining = memberReqs.reduce((s, r) => s + Math.max(0, r.est_effort - r.actual_effort), 0)
             return (
               <Card key={m.id}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">{m.name}</CardTitle>
-                    <Badge variant="secondary">{memberReqs.length} 个需求 · {totalEffort}h / 容量{m.week_capacity}h</Badge>
+                    <Badge variant="secondary">{memberReqs.length} 个需求 · 在途 {totalEffort}h · 剩余 {remaining}h</Badge>
                   </div>
                 </CardHeader>
                 <CardContent>

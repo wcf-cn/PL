@@ -172,6 +172,7 @@ class TimeEntry(models.Model):
 
 class Version(models.Model):
     name = models.CharField('版本', max_length=64)
+    phase = models.CharField('阶段(留空=按日期派生)', max_length=10, blank=True, default='')
     integration_date = models.DateField('联调日', null=True, blank=True)
     freeze_date = models.DateField('封板日', null=True, blank=True)
     test_date = models.DateField('转测日', null=True, blank=True)
@@ -190,6 +191,8 @@ class Version(models.Model):
 
     @property
     def current_phase(self):
+        if self.phase:
+            return self.phase
         today = timezone.now().date()
         if self.release_date and today >= self.release_date:
             return '已发布'
