@@ -67,6 +67,10 @@ export default function Board() {
     setItems(prev => prev.map(x => x.id === id ? { ...x, status } : x))
     await api.requirements.update(id, { status })
   }
+  const saveNote = async (id: number, note: string) => {
+    setItems(prev => prev.map(x => x.id === id ? { ...x, note } : x))
+    await api.requirements.update(id, { note })
+  }
 
   // 键盘快捷键 + 焦点卡
   const searchRef = useRef<HTMLInputElement>(null)
@@ -718,14 +722,14 @@ export default function Board() {
       )}
       <div className="flex gap-3 overflow-x-auto pb-4">
         {STATUS_ORDER.filter(st => showDone || st !== 'done').map(st => (
-          <Column key={st} status={st} items={visibleItems.filter(r => r.status === st)} allItems={items} onDrop={onDrop} onEdit={startEdit} selectMode={selectMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} focusedId={focusedId} />
+          <Column key={st} status={st} items={visibleItems.filter(r => r.status === st)} allItems={items} onDrop={onDrop} onEdit={startEdit} selectMode={selectMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} focusedId={focusedId} onSaveNote={saveNote} />
         ))}
       </div>
     </div>
   )
 }
 
-function Column({ status, items, allItems, onDrop, onEdit, selectMode, selectedIds, onToggleSelect, focusedId }:{ status:Status; items:Requirement[]; allItems:Requirement[]; onDrop:(s:Status,id:number)=>void; onEdit:(r:Requirement)=>void; selectMode:boolean; selectedIds:Set<number>; onToggleSelect:(id:number)=>void; focusedId:number|null }) {
+function Column({ status, items, allItems, onDrop, onEdit, selectMode, selectedIds, onToggleSelect, focusedId, onSaveNote }:{ status:Status; items:Requirement[]; allItems:Requirement[]; onDrop:(s:Status,id:number)=>void; onEdit:(r:Requirement)=>void; selectMode:boolean; selectedIds:Set<number>; onToggleSelect:(id:number)=>void; focusedId:number|null; onSaveNote:(id:number,note:string)=>void }) {
   const [over, setOver] = useState(false)
   return (
     <div
@@ -746,7 +750,7 @@ function Column({ status, items, allItems, onDrop, onEdit, selectMode, selectedI
         className="min-h-[300px] space-y-2"
       >
         {items.map(r => (
-          <RequirementCard key={r.id} requirement={r} allItems={allItems} onEdit={onEdit} selectMode={selectMode} selected={selectedIds.has(r.id)} onToggle={onToggleSelect} focused={focusedId === r.id} onMove={(s) => onDrop(s, r.id)} />
+          <RequirementCard key={r.id} requirement={r} allItems={allItems} onEdit={onEdit} selectMode={selectMode} selected={selectedIds.has(r.id)} onToggle={onToggleSelect} focused={focusedId === r.id} onMove={(s) => onDrop(s, r.id)} onSaveNote={onSaveNote} />
         ))}
       </div>
     </div>
@@ -772,8 +776,10 @@ function stuckBadge(r: Requirement) {
   return null
 }
 
-function RequirementCard({ requirement, allItems, onEdit, selectMode, selected, onToggle, focused, onMove }: { requirement: Requirement; allItems: Requirement[]; onEdit: (r: Requirement) => void; selectMode: boolean; selected: boolean; onToggle: (id: number) => void; focused: boolean; onMove: (s: Status) => void }) {
+function RequirementCard({ requirement, allItems, onEdit, selectMode, selected, onToggle, focused, onMove, onSaveNote }: { requirement: Requirement; allItems: Requirement[]; onEdit: (r: Requirement) => void; selectMode: boolean; selected: boolean; onToggle: (id: number) => void; focused: boolean; onMove: (s: Status) => void; onSaveNote: (id: number, note: string) => void }) {
   const [expanded, setExpanded] = useState(false)
+  const [noteOpen, setNoteOpen] = useState(false)
+  const [noteDraft, setNoteDraft] = useState(requirement.note)
   const children = allItems.filter(r => r.parent === requirement.id)
   const hasChildren = children.length > 0
   const idx = STATUS_ORDER.indexOf(requirement.status)
@@ -798,12 +804,20 @@ function RequirementCard({ requirement, allItems, onEdit, selectMode, selected, 
       <CardContent className="p-3">
         <div className="flex items-center justify-between mb-2">
           <span className="font-medium">{requirement.title}</span>
-          {hasChildren && !selectMode && (
-            <button onClick={(e)=>{e.stopPropagation(); setExpanded(!expanded)}} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
-              <Badge variant="secondary">子{children.length}</Badge>
-              {expanded ? '▼' : '▶'}
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {!selectMode && (
+              <button onClick={(e) => { e.stopPropagation(); setNoteOpen(!noteOpen); setNoteDraft(requirement.note) }}
+                className={`text-xs flex items-center gap-0.5 ${requirement.note ? 'text-primary' : 'text-muted-foreground'} hover:text-foreground`} title="杂记">
+                📝{requirement.note && <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />}
+              </button>
+            )}
+            {hasChildren && !selectMode && (
+              <button onClick={(e)=>{e.stopPropagation(); setExpanded(!expanded)}} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                <Badge variant="secondary">子{children.length}</Badge>
+                {expanded ? '▼' : '▶'}
+              </button>
+            )}
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <Badge variant={PRIO_VARIANT[requirement.priority]} className="text-xs">
@@ -825,6 +839,21 @@ function RequirementCard({ requirement, allItems, onEdit, selectMode, selected, 
           <div className="flex gap-1 md:hidden mt-2">
             {prevStatus && <button onClick={(e) => { e.stopPropagation(); onMove(prevStatus) }} className="text-xs px-2 py-0.5 rounded border bg-background">{STATUS_LABEL[prevStatus]} ←</button>}
             {nextStatus && <button onClick={(e) => { e.stopPropagation(); onMove(nextStatus) }} className="text-xs px-2 py-0.5 rounded border bg-background">{STATUS_LABEL[nextStatus]} →</button>}
+          </div>
+        )}
+        {noteOpen && !selectMode && (
+          <div className="mt-2" onClick={e => e.stopPropagation()}>
+            <textarea
+              value={noteDraft}
+              onChange={e => setNoteDraft(e.target.value)}
+              className="w-full text-xs p-2 rounded border bg-background resize-none"
+              rows={3}
+              placeholder="杂记..."
+            />
+            <div className="flex gap-1 mt-1">
+              <button onClick={() => { onSaveNote(requirement.id, noteDraft); setNoteOpen(false) }} className="text-xs px-2 py-0.5 rounded bg-primary text-primary-foreground">保存</button>
+              <button onClick={() => setNoteOpen(false)} className="text-xs px-2 py-0.5 rounded border">取消</button>
+            </div>
           </div>
         )}
         {expanded && hasChildren && (
