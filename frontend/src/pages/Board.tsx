@@ -786,6 +786,7 @@ function RequirementCard({ requirement, allItems, onEdit, selectMode, selected, 
   const prevStatus = idx > 0 ? STATUS_ORDER[idx - 1] : null
   const nextStatus = idx >= 0 && idx < STATUS_ORDER.length - 1 ? STATUS_ORDER[idx + 1] : null
   return (
+    <>
     <Card
       draggable={!selectMode}
       onDragStart={e=>(e as any).dataTransfer.setData('id', String(requirement.id))}
@@ -841,21 +842,6 @@ function RequirementCard({ requirement, allItems, onEdit, selectMode, selected, 
             {nextStatus && <button onClick={(e) => { e.stopPropagation(); onMove(nextStatus) }} className="text-xs px-2 py-0.5 rounded border bg-background">{STATUS_LABEL[nextStatus]} →</button>}
           </div>
         )}
-        {noteOpen && !selectMode && (
-          <div className="mt-2" onClick={e => e.stopPropagation()}>
-            <textarea
-              value={noteDraft}
-              onChange={e => setNoteDraft(e.target.value)}
-              className="w-full text-xs p-2 rounded border bg-background resize-none"
-              rows={3}
-              placeholder="杂记..."
-            />
-            <div className="flex gap-1 mt-1">
-              <button onClick={() => { onSaveNote(requirement.id, noteDraft); setNoteOpen(false) }} className="text-xs px-2 py-0.5 rounded bg-primary text-primary-foreground">保存</button>
-              <button onClick={() => setNoteOpen(false)} className="text-xs px-2 py-0.5 rounded border">取消</button>
-            </div>
-          </div>
-        )}
         {expanded && hasChildren && (
           <div className="mt-3 pl-3 border-l-2 border-muted space-y-2">
             {children.map(c => (
@@ -872,5 +858,22 @@ function RequirementCard({ requirement, allItems, onEdit, selectMode, selected, 
         )}
       </CardContent>
     </Card>
+    <Dialog open={noteOpen} onOpenChange={(open) => { if (!open) setNoteOpen(false) }}>
+      <DialogContent className="max-w-2xl h-[70vh] flex flex-col">
+        <DialogHeader><DialogTitle>📝 杂记 — {requirement.title}</DialogTitle></DialogHeader>
+        <textarea
+          autoFocus
+          value={noteDraft}
+          onChange={e => setNoteDraft(e.target.value)}
+          className="flex-1 w-full p-3 rounded border bg-background resize-none text-sm leading-relaxed"
+          placeholder="记录想法、上下文、决策、链接…"
+        />
+        <DialogFooter>
+          <Button onClick={() => { onSaveNote(requirement.id, noteDraft); setNoteOpen(false) }}>保存</Button>
+          <Button variant="outline" onClick={() => setNoteOpen(false)}>取消</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }
