@@ -339,16 +339,16 @@ export default function Gantt() {
                   const endDay = position(displayEnd)
 
                   return (
-                  <div key={r.id} className="relative h-8 border-b">
+                  <div key={r.id} className="relative h-8 border-b min-h-[2rem]">
                     <div
                       className={cn(
-                        "absolute h-6 rounded px-2 text-xs flex items-center truncate",
+                        "absolute h-6 rounded px-2 text-xs flex items-center truncate z-10",
                         STATUS_COLORS[r.status],
                         isDragging ? "cursor-grabbing" : "cursor-grab"
                       )}
                       style={{
                         left: `${dayToX(startDay)}px`,
-                        width: `${dayToX(endDay) - dayToX(startDay) + DAY_W}px`,
+                        width: `${Math.max(DAY_W, dayToX(endDay) - dayToX(startDay) + DAY_W)}px`,
                         top: '4px'
                       }}
                       title={`${r.title} (${STATUS_LABEL[r.status]})`}

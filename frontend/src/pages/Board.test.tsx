@@ -60,7 +60,7 @@ describe('Board', () => {
       expect(api.requirements.create).toHaveBeenCalledWith({
         title: '新需求', status: 'backlog', priority: 'P1', kind: 'feature', assignee: null, module: '',
         est_effort: 0, actual_effort: 0, progress: 0, planned_start: null, planned_end: null,
-        version: null, blocked_by: [],
+        version: null, blocked_by: [], note: '',
       })
     })
     await waitFor(() => expect(screen.getByText('新需求')).toBeInTheDocument())

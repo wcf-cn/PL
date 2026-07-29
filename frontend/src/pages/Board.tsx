@@ -35,6 +35,7 @@ export default function Board() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [milestones, setMilestones] = useState<any[]>([])
   const [mtitle, setMTitle] = useState('')
+  const [childTitle, setChildTitle] = useState('')
   const [mdate, setMDate] = useState('')
   const [mnote, setMNote] = useState('')
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
@@ -293,6 +294,7 @@ export default function Board() {
         planned_end: form.planned_end || null,
         version: form.version,
         blocked_by: form.blockedBy,
+        note: editingId ? (items.find(x => x.id === editingId)?.note ?? '') : '',
       }
       if (editingId) {
         const updated = await api.requirements.update(editingId, payload)
@@ -312,6 +314,15 @@ export default function Board() {
       else if (d && typeof d === 'object') msg = Object.entries(d).map(([f, e]) => `${f}: ${Array.isArray(e) ? e.join(',') : e}`).join('; ')
       setError(msg)
     }
+  }
+
+  const addChildTask = async () => {
+    if (!editingId || !childTitle.trim()) return
+    try {
+      const created = await api.requirements.create({ title: childTitle.trim(), parent: editingId, status: 'backlog', priority: 'P1', kind: 'feature', est_effort: 0, actual_effort: 0, progress: 0, planned_start: null, planned_end: null, version: null, blocked_by: [], note: '' })
+      setItems(prev => [...prev, created])
+      setChildTitle('')
+    } catch { setError('添加子任务失败') }
   }
 
   const addMilestone = async () => {
@@ -621,6 +632,25 @@ export default function Board() {
 
               {editingId && (
                 <>
+                  <Separator />
+                  <div className="space-y-3">
+                    <div className="font-medium">子任务 ({items.filter(r => r.parent === editingId).length})</div>
+                    <div className="space-y-2">
+                      {items.filter(r => r.parent === editingId).map(c => (
+                        <div key={c.id} className="text-xs flex items-center gap-2">
+                          <Badge variant="outline" className="text-[10px]">{STATUS_LABEL[c.status]}</Badge>
+                          <span className="flex-1 truncate">{c.title}</span>
+                          <span className="text-muted-foreground">{c.est_effort}h</span>
+                        </div>
+                      ))}
+                      {items.filter(r => r.parent === editingId).length === 0 && <div className="text-sm text-muted-foreground">暂无子任务</div>}
+                    </div>
+                    <div className="flex gap-2">
+                      <Input value={childTitle} onChange={e => setChildTitle(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addChildTask() } }} placeholder="子任务标题,回车添加" className="flex-1 text-sm" />
+                      <Button type="button" size="sm" variant="outline" onClick={addChildTask}>添加</Button>
+                    </div>
+                  </div>
+
                   <Separator />
                   <div className="space-y-3">
                     <div className="font-medium">里程碑 ({milestones.length})</div>
